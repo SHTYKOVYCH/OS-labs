@@ -20,3 +20,9 @@ cmake-build-debug
 *.iml
 out
 gen
+
+
+### Папка для тестов
+
+tests
+/**/tests!/lab1/tests/
