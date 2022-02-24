@@ -1,3 +1,26 @@
+#include <stdio.h>
+#include <string.h>
+
+#include "error_codes.h"
+#include "error_handler.h"
+
+char* parseFilename(char* filename)
+{
+	if (strlen(filename) >= 255)
+	{
+		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла должно содержать менее 255 символов");
+	}
+	if (strstr(filename, "/"))	// Исключение запрещённых символов в имени файла 
+	{
+		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла не должно содержать \'/\'")
+	}
+	if (!strcmp(filename, ".") || !strcmp(filename, ".."))	// Зарезервированные имена
+	{
+		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла зарезервировано")
+	}
+	return filename;
+}
+
 int parseArgs(int argc, char **argv, Args *args)
 {
 	args->depack = 0;
@@ -6,73 +29,50 @@ int parseArgs(int argc, char **argv, Args *args)
 
 	if ((argc > 6) || (argc < 3))
 	{
-		return 0;
+		return WRONG_PARAMETER_ERROR;
 	}
 
-	// 1 - следующий аргумент обрабатывается как имя файла
-	int parseInput = 0;
-    int parseOutput = 0;
-
-    /*
-    	TODO:
-
-    	1) Подумать, можно ли избавиться от стены if-ов
-    	2) Найти более извращённые тест-кейсы
-    	3) Возможно, есть смысл разработать различные коды ошибок
-
-    */
-    for (int i = 1; i < argc; i++)
+	for (int i = 1; i < argc; i++)
     {
     	char *arg = argv[i];
-    	if (!strcmp(arg, "-d"))	// Найден флаг деархивации
+    	if (!strcmp(arg, "-d"))
     	{
     		args->depack = 1;
     	}
-    	else if (!strcmp(arg, "-i")) // Найден флаг входного файла
+    	else if (!strcmp(arg, "-i"))
     	{
-    		parseInput = 1;
+    		if (i + 1 == argc)	// Будем читать следующий элемент, если возможно
+    		{
+    			return MISSING_PARAMETER_ERROR;
+    		}
+    		else
+    		{
+    			args->inputFile = parseFilename(argv[i + 1]);
+    			++i;
+    		}
     	}
-    	else if (!strcmp(arg, "-o")) // Найден флаг выходного файла (архива)
+    	else if (!strcmp(arg, "-o"))
     	{
-    		parseOutput = 1;
+    		if (i + 1 == argc)
+    		{
+    			return MISSING_PARAMETER_ERROR;
+    		}
+    		else
+    		{
+    			args->outputFile = parseFilename(argv[i + 1]);
+    			++i;
+    		}
     	}
     	else
     	{
-    		if(parseInput && parseOutput)	// Два флага подряд => указан ключ без имени файла
-    		{
-    			return 0;
-    		}
-
-    		if (strstr(arg, ".") || strstr(arg, "/"))	// Исключение запрещённых символов в имени файла 
-    		{
-    			return 0;
-    		}
-
-    		if (arg[0] == '-' || strlen(arg) > 255)	// Неизвестный ключ / слишком большое имя файла = смерть
-    		{
-    			return 0;
-    		}
-    		else if (parseInput)
-        	{
-        		args->inputFile = arg;
-        		parseInput = 0;
-        	}
-        	else if (parseOutput)
-        	{
-        		args->outputFile = arg;
-        		parseOutput = 0;
-        	}
-        	else
-        	{
-        		return 0;
-        	}
+        	return NOT_EXISTING_PARAMETER_ERROR;
     	}
     }
 
-    if (parseOutput || parseInput)	// Остался необработанный ключ = смерть
+    if (!strcmp(args->inputFile, ""))	// Если так и не получили имя входного файла
     {
-    	return 0;
+    	return MISSING_PARAMETER_ERROR;
     }
 
-	return 1;
+	return SUCCESS;
 }
