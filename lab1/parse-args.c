@@ -1,16 +1,8 @@
-/*
-	Возвращает 1 если всё хорошо.
-	Возвращает 0 в случае ошибки.
-
-	Алярма: сейчас код ошибки 0 - единый для всех случаев.
-*/
 int parseArgs(int argc, char **argv, Args *args)
 {
-	args = (Args*) malloc(sizeof(Args));
-
-	args.depack = 0;
-	args.outputFile = "archive";
-	args.inputFile = "";
+	args->depack = 0;
+	args->outputFile = "archive";
+	args->inputFile = "";
 
 	if ((argc > 6) || (argc < 3))
 	{
@@ -34,7 +26,7 @@ int parseArgs(int argc, char **argv, Args *args)
     	char *arg = argv[i];
     	if (!strcmp(arg, "-d"))	// Найден флаг деархивации
     	{
-    		args.depack = 1;
+    		args->depack = 1;
     	}
     	else if (!strcmp(arg, "-i")) // Найден флаг входного файла
     	{
@@ -62,12 +54,12 @@ int parseArgs(int argc, char **argv, Args *args)
     		}
     		else if (parseInput)
         	{
-        		args.inputFile = arg;
+        		args->inputFile = arg;
         		parseInput = 0;
         	}
         	else if (parseOutput)
         	{
-        		args.outputFile = arg;
+        		args->outputFile = arg;
         		parseOutput = 0;
         	}
         	else
