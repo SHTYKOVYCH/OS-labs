@@ -27,11 +27,6 @@ int parseArgs(int argc, char **argv, Args *args)
 	args->outputFile = "archive";
 	args->inputFile = "";
 
-	if ((argc > 6) || (argc < 3))
-	{
-		return WRONG_PARAMETER_ERROR;
-	}
-
 	for (int i = 1; i < argc; i++)
     {
     	char *arg = argv[i];
