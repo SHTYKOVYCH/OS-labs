@@ -9,14 +9,17 @@ char* parseFilename(char* filename)
 	if (strlen(filename) >= 255)
 	{
 		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла должно содержать менее 255 символов");
+		exit(1);
 	}
 	if (strstr(filename, "/"))	// Исключение запрещённых символов в имени файла 
 	{
-		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла не должно содержать \'/\'")
+		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла не должно содержать \'/\'");
+		exit(1);
 	}
 	if (!strcmp(filename, ".") || !strcmp(filename, ".."))	// Зарезервированные имена
 	{
-		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла зарезервировано")
+		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла зарезервировано");
+		exit(1);
 	}
 	return filename;
 }
