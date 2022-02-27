@@ -6,9 +6,7 @@
 
 int readFile(int file, char* buffer, int nread)
 {
-    int mread = read(file, buffer, nread);
-
-    if (mread <= nread)
+    if (read(file, buffer, nread) < nread)
     {
     	return READING_FROM_FILE_ERROR;
     }
