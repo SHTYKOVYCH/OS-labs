@@ -4,18 +4,24 @@
 #include "error_codes.h"
 #include "error_handler.h"
 
-char* parseFilename(char* filename)
+char* parseFilename(char* filename, char type)	// 'd' - директория, 'f' - файл
 {
 	if (strlen(filename) >= 255)
 	{
-		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла должно содержать менее 255 символов");
+		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла/директории должно содержать менее 255 символов");
 		exit(1);
 	}
-	if (strstr(filename, "/"))	// Исключение запрещённых символов в имени файла 
+	if (strstr(filename, "/"))	// Исключение запрещённых символов в имени файла. Имя директории не может содержать путь
 	{
-		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла не должно содержать \'/\'");
+		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла/директории не должно содержать \'/\'");
 		exit(1);
 	}
+
+	if (type == 'd') // Если директория, она вполне может зваться . или ..
+	{
+		return filename;
+	}
+
 	if (!strcmp(filename, ".") || !strcmp(filename, ".."))	// Зарезервированные имена
 	{
 		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла зарезервировано");
@@ -45,7 +51,7 @@ int parseArgs(int argc, char **argv, Args *args)
     		}
     		else
     		{
-    			args->inputFile = parseFilename(argv[i + 1]);
+    			args->inputFile = parseFilename(argv[i + 1], 'f');
     			++i;
     		}
     	}
@@ -57,7 +63,7 @@ int parseArgs(int argc, char **argv, Args *args)
     		}
     		else
     		{
-    			args->outputFile = parseFilename(argv[i + 1]);
+    			args->outputFile = parseFilename(argv[i + 1], 'f');
     			++i;
     		}
     	}

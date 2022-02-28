@@ -8,7 +8,7 @@ struct Args
 	char *outputFile;
 };
 
-char* parseFilename(char* filename);
+char* parseFilename(char* filename, char type);
 int parseArgs(int argc, char **argv, Args *args);
 
 #endif
