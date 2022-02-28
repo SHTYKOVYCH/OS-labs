@@ -10,6 +10,6 @@ struct json_s
 
 typedef struct json_s json;
 
-int string2json(char* string, struct json *jason);
+int string2json(const char* string, json *jason);
 
 #endif
