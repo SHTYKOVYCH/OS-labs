@@ -39,7 +39,11 @@ int string2json(const char* string, struct json* jason)
 		}
 		else if (!strcmp(buff, "type"))
 		{
-			i += 5;	// Не ну в принипе type не нужен. Он бы пригодился если шёл первым аргументом. Тогда и дублирования кода ниже, может быть, и не было
+			i += 3;
+
+			jason->type = string[i];
+
+			i += 2;
 		}
 		else if (!strcmp(buff, "parentDir"))
 		{
