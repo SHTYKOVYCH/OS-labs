@@ -3,6 +3,7 @@
 
 #include "error_codes.h"
 #include "error_handler.h"
+#include "parse-args.h"
 
 char* parseFilename(char* filename, char type)	// 'd' - директория, 'f' - файл
 {
@@ -47,6 +48,7 @@ int parseArgs(int argc, char **argv, Args *args)
     	{
     		if (i + 1 == argc)	// Будем читать следующий элемент, если возможно
     		{
+                errorHandler(MISSING_PARAMETER_ERROR, "input filename required after flag -i");
     			return MISSING_PARAMETER_ERROR;
     		}
     		else
@@ -59,6 +61,7 @@ int parseArgs(int argc, char **argv, Args *args)
     	{
     		if (i + 1 == argc)
     		{
+                errorHandler(MISSING_PARAMETER_ERROR, "output filename required after flag -o");
     			return MISSING_PARAMETER_ERROR;
     		}
     		else
@@ -75,6 +78,7 @@ int parseArgs(int argc, char **argv, Args *args)
 
     if (!strcmp(args->inputFile, ""))	// Если так и не получили имя входного файла
     {
+        errorHandler(MISSING_PARAMETER_ERROR, "input filename required");
     	return MISSING_PARAMETER_ERROR;
     }
 
