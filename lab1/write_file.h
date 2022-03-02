@@ -5,6 +5,6 @@
 #ifndef OS_WRITE_FILE_H
 #define OS_WRITE_FILE_H
 
-int writeFile(int, char*, int);
+int writeFile(int fileId, char* buffer, int numOfBytes);
 
 #endif //OS_WRITE_FILE_H
