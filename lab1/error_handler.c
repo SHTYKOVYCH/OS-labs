@@ -1,6 +1,8 @@
 //
 // Created by dimitis on 23.02.2022.
 //
+// Altered by nikolay on 02.03.2022
+//
 
 #include <unistd.h>
 #include <string.h>
@@ -46,6 +48,8 @@ void errorHandler(int error, const char* additionalString)
         case (FILE_STRUCTURE_ERROR):
             strcat(errorString, "wrong file structure\n");
             break;
+        case (SEEKING_FILE_ERROR):
+            strcat(errorString, "could not seek file ");
         case (WRONG_PARAMETER_ERROR):
         case (MISSING_PARAMETER_ERROR):
             strcat(errorString, additionalString);
