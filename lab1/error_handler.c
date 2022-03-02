@@ -49,7 +49,8 @@ void errorHandler(int error, const char* additionalString)
             strcat(errorString, "wrong file structure\n");
             break;
         case (SEEKING_FILE_ERROR):
-            strcat(errorString, "could not seek file ");
+            strcat(errorString, "could not seek file\n");
+            break;
         case (WRONG_PARAMETER_ERROR):
         case (MISSING_PARAMETER_ERROR):
             strcat(errorString, additionalString);
