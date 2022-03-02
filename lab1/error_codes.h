@@ -13,6 +13,7 @@ enum ERRORS {
     READING_FROM_FILE_ERROR,
     WRITING_TO_FILE_ERROR,
     FILE_STRUCTURE_ERROR,           // Ошибка в структуре файла или в структуре JSON
+    END_OF_FILE,                    // чисто справочный код для удобства определения статуса
 };
 
 #endif //OS_ERROR_CODES_H
