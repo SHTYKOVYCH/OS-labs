@@ -29,7 +29,6 @@ int readFieldName(int fileId, char* buffer, int* bufferIndex)
     }
 }
 
-
 int readFieldContent(int fileId, char* buffer, int *bufferIndex)
 {
     int errorCode = readFile(fileId, &buffer[*bufferIndex], 1);
@@ -51,14 +50,18 @@ int readFieldContent(int fileId, char* buffer, int *bufferIndex)
             return errorCode;
         }
 
-        if (buffer[*bufferIndex] == '\"') {
+        if (buffer[*bufferIndex] == '\\') {
+            *bufferIndex += 1;
+            continue;
+        }
+
+        if (buffer[*bufferIndex] == '\"' && buffer[*bufferIndex - 1] != '\\') {
             *bufferIndex += 1;
             return SUCCESS;
         }
         *bufferIndex += 1;
     }
 }
-
 
 int readJSONFromFile(int fileId, char* accumulator)
 {
