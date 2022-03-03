@@ -6,10 +6,16 @@
 
 int readFile(int file, char* buffer, int nread)
 {
-    if (read(file, buffer, nread) < nread)
-    {
-    	return READING_FROM_FILE_ERROR;
+    int numOfReadedBytes = read(file, buffer, nread);
+
+    if (numOfReadedBytes == 0) {
+        return END_OF_FILE;
     }
+
+    if (numOfReadedBytes == -1) {
+        return READING_FROM_FILE_ERROR;
+    }
+
 
     return SUCCESS;
 }

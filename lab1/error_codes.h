@@ -15,6 +15,7 @@ enum ERRORS {
     READING_FROM_FILE_ERROR,
     WRITING_TO_FILE_ERROR,
     FILE_STRUCTURE_ERROR,           // Ошибка в структуре файла или в структуре JSON
+    END_OF_FILE,                    // чисто справочный код для удобства определения статуса
     SEEKING_FILE_ERROR,             // Ошибка при перемещении указателя в файле
 };
 
