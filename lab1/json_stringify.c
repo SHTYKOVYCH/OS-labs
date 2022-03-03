@@ -17,7 +17,7 @@ void escapeString(char* buffer, char* string)
 {
     int i;
     for (i = 0; i < strlen(string); i += 1) {
-        if (string[i] == '\"' || string[i] == '\"') {
+        if (string[i] == '\"') {
             strcat(buffer, "\\");
         }
 
