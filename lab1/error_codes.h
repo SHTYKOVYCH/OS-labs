@@ -1,6 +1,8 @@
 //
 // Created by dimitis on 23.02.2022.
 //
+// Altered by nikolay on 02.03.2022
+//
 
 #ifndef OS_ERROR_CODES_H
 #define OS_ERROR_CODES_H
@@ -14,6 +16,7 @@ enum ERRORS {
     WRITING_TO_FILE_ERROR,
     FILE_STRUCTURE_ERROR,           // Ошибка в структуре файла или в структуре JSON
     END_OF_FILE,                    // чисто справочный код для удобства определения статуса
+    SEEKING_FILE_ERROR,             // Ошибка при перемещении указателя в файле
 };
 
 #endif //OS_ERROR_CODES_H
