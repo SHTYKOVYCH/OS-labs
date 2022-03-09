@@ -56,6 +56,11 @@ void errorHandler(int error, const char* additionalString)
             strcat(errorString, additionalString);
             strcat(errorString, "\n");
             break;
+        case(OPENING_FILE_ERROR):
+            strcat(errorString, "on opening file ");
+            strcat(errorString, additionalString);
+            strcat(errorString, "\n");
+            break;
     }
 
     write(2, errorString, strlen(errorString));

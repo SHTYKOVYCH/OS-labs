@@ -5,6 +5,8 @@
 #include "error_codes.h"
 #include "error_handler.h"
 #include "parse-args.h"
+#include "json_stringify.h"
+#include "depack.h"
 
 int main(int argc, char* argv[])
 {
@@ -15,6 +17,10 @@ int main(int argc, char* argv[])
 
     if (errorCode != SUCCESS) {
         return 1;
+    }
+
+    if (args.depack) {
+        depack(&args);
     }
 
     return 0;
