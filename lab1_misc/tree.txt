@@ -1,0 +1,14 @@
+.
+├── somedir1
+│   ├── somenesteddir
+│   │   └── somecontents.txt
+│   ├── somenestfile2.txt
+│   └── somenestfile.txt
+├── somedir2
+│   ├── direct
+│   │   └── anotherfile.txt
+│   └── file.txt
+├── somefile.txt
+└── tree.txt
+
+4 directories, 7 files
