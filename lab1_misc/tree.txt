@@ -8,7 +8,6 @@
 │   ├── direct
 │   │   └── anotherfile.txt
 │   └── file.txt
-├── somefile.txt
-└── tree.txt
+└── somefile.txt
 
-4 directories, 7 files
+4 directories, 6 files
