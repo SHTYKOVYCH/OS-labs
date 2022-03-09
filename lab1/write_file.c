@@ -9,7 +9,7 @@
 
 int writeFile(int fileId, char* buffer, int numOfBytes)
 {
-    if (write(fileId, buffer, numOfBytes) != numOfBytes) {
+    if (write(fileId, buffer, numOfBytes) == -1) {
         return WRITING_TO_FILE_ERROR;
     }
 

@@ -11,9 +11,10 @@
 
 int readFieldName(int fileId, char* buffer, int* bufferIndex)
 {
-    int errorCode;
 
     while(1) {
+        int errorCode;
+
         errorCode = readFile(fileId, &buffer[*bufferIndex], 1);
 
         if (errorCode != SUCCESS) {
@@ -89,6 +90,7 @@ int readJSONFromFile(int fileId, char* accumulator)
             return SUCCESS;
         }
 
+        bufferIndex += 1;
         errorCode = readFieldName(fileId, accumulator, &bufferIndex);
 
         if (errorCode == END_OF_FILE) {
