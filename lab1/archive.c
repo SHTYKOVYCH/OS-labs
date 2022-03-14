@@ -13,12 +13,13 @@
 #include "read-file.h"
 #include "write_file.h"
 #include "seek-file.h"
+#include "json_stringify.h"
 
-void sprintDir(char *dir, char* str, int *count)
+void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count)
 {
-    DIR *dp;
-    struct dirent *entry;
-    struct stat statbuf;
+    DIR *dp;    // Указатель на поток директории
+    struct dirent *entry;   // Структура данных директории
+    struct stat statbuf; // Статусная информация о файле в директории
  
     if ((dp = opendir(dir)) == NULL)
     {
@@ -26,53 +27,68 @@ void sprintDir(char *dir, char* str, int *count)
         return;
     }
     
-    chdir(dir);
-    while ((entry = readdir(dp)) != NULL)
+    chdir(dir); // Проникаем в рассматриваемую директорию
+    while ((entry = readdir(dp)) != NULL)   // Идём в глубину
     {
-        lstat(entry->d_name, &statbuf);
-        if (entry->d_type == 4)
+        lstat(entry->d_name, &statbuf); // Считываем данные о сущности
+        if (entry->d_type == 4) // Тут дело такое. Сущность - файл: код 4, сущность - директория: код 8
         {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 ) 
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)    // Директории . и .. тоже попадают в обработчик, но они нам не нужны
             {
                 continue;
             } 
 
             (*count)++;
-            sprintDir(entry->d_name, str, count);
+            sprintDir(filedescr, entry->d_name, str, jason, count); // Ре курсия
 
-            char *buff = malloc(sizeof(char) * 1024);
-            memset(buff, 0, 1024);
+            char *meta = malloc(sizeof(char) * 1024); // Далее: читаем мету, переводим в джейсон и загружаем в буфер
+            memset(meta, 0, 1024);
 
-            sprintf(buff, "{name:\"%s\",parentDir:\"%s\",type=\"d\"}", entry->d_name, dir);
-            strcat(str, buff);
+            jason->name = entry->d_name;
+            jason->parentDir = dir;
+            jason->type = 'd';
 
-            free(buff);
+            jsonStringify(jason, meta);
+            strcat(str, meta);
+
+            writeFile(filedescr, str, strlen(str)); // Сразу пишем в архив и чистим буфер
+
+            free(meta);
+            memset(str, 0, 4096);
         }
         else
         {
-            char *meta = malloc(sizeof(char) * 512);
-            memset(meta, 0, 512);
             char *abs_filename = malloc(sizeof(char) * 1024);
             memset(abs_filename, 0, 1024);
+            char *meta = malloc(sizeof(char) * 1024);
+            memset(meta, 0, 1024);
             char *contents = malloc(sizeof(char) * 4096);
             memset(contents, 0, 4096);
 
-            getcwd(abs_filename, 1024);
+            getcwd(abs_filename, 1024); // Путь до файла, чей контент надо считать
             strcat(abs_filename, "/");
             strcat(abs_filename, entry->d_name);
 
-            sprintf(meta, "{name:\"%s\",parentDir:\"%s\",size:\"%ld\",type=\"f\"}", entry->d_name, dir, statbuf.st_size);
+            jason->name = entry->d_name;    // Так же работаем с метой
+            jason->parentDir = dir;
+            jason->type = 'f';
+            jason->size = statbuf.st_size;
+
+            jsonStringify(jason, meta);
             strcat(str, meta);
 
-            int filedescr = open(abs_filename, O_RDONLY);
-            readFile(filedescr, contents, statbuf.st_size);
-            close(filedescr);
+            int file = open(abs_filename, O_RDONLY);    // Собственно читаем контент, и пишем в буфер
+            readFile(file, contents, statbuf.st_size);
+            close(file);
 
             strcat(str, contents);
+
+            writeFile(filedescr, str, strlen(str)); // Всю инфу в архив
 
             free(meta);
             free(abs_filename);
             free(contents);
+            memset(str, 0, 4096);
 
             (*count)++;
         }
@@ -81,23 +97,25 @@ void sprintDir(char *dir, char* str, int *count)
     closedir(dp);   
 }
 
-void archive(char *dir)	// Требуется указывать полный путь до архивируемой папки. К примеру, /home/nikolay/Testdir
+void archive(char *dir, char *archName) // Можно указать полный или относительный путь до архивируемой папки. archName - имя файла, который программа будет выплевывать как архив
 {
-    int filedescr = open("text.txt", O_RDWR);
+    int filedescr = open(archName, O_WRONLY | O_CREAT, 0777);   // Создаём архив
 
-    int count = 0;
+    unsigned int count = 0;
 
-    char *buff = malloc(sizeof(char) * 65536);
-    memset(buff, 0, 65536);
-    sprintDir(dir, buff, &count);
+    write(filedescr, &count, sizeof(count));    // Пробел в начале файла для числа файлов в архиве
 
-    char count_str[12];
-    sprintf(count_str, "%d", count);
+    char *buff = malloc(sizeof(char) * 4096);
+    memset(buff, 0, 4096);
 
-    writeFile(filedescr, count_str, strlen(count_str));
-    seekFile(filedescr, strlen(count_str));
-    writeFile(filedescr, buff, strlen(buff));
+    json *jason = malloc(sizeof(json));
+
+    sprintDir(filedescr, dir, buff, jason, &count);
+
+    lseek(filedescr, 0L, SEEK_SET);
+    write(filedescr, &count, sizeof(count));    // Дописываем в начало обещанное число файлов
 
     free(buff);
+    free(jason);
     close(filedescr);
 }
