@@ -39,7 +39,6 @@ void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count)
             } 
 
             (*count)++;
-            sprintDir(filedescr, entry->d_name, str, jason, count); // Ре курсия
 
             char *meta = malloc(sizeof(char) * 1024); // Далее: читаем мету, переводим в джейсон и загружаем в буфер
             memset(meta, 0, 1024);
@@ -55,6 +54,8 @@ void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count)
 
             free(meta);
             memset(str, 0, 4096);
+            
+            sprintDir(filedescr, entry->d_name, str, jason, count); // Ре курсия
         }
         else
         {
