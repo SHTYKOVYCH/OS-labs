@@ -14,7 +14,9 @@ set(HEADERS
         json_stringify.h
         read_json_from_file.h
         seek-file.h
+        dir_tree.h
         archive.h
+        depack.h
         )
 
 set(SOURCES
@@ -27,10 +29,12 @@ set(SOURCES
         json_stringify.c
         read_json_from_file.c
         seek-file.c
+        dir_tree.c
+        depack.c
         archive.c
         )
 
-set( GXX_FLAGS "-g" )
+set( GXX_FLAGS "-g -fsanitize=address" )
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GXX_FLAGS}" )
 
