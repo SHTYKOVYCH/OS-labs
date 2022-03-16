@@ -4,7 +4,7 @@
 #include "string-2-json.h"
 #include "parse-args.h"
 
-int string2json(const char* string, struct json* jason)
+int string2json(const char* string, json* jason)
 {
 	char buff[255];
 	memset(buff, 0, 255);

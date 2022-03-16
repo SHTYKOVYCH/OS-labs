@@ -5,6 +5,7 @@
 #include "error_codes.h"
 #include "error_handler.h"
 #include "parse-args.h"
+#include "archive.h"
 
 int main(int argc, char* argv[])
 {
@@ -16,6 +17,8 @@ int main(int argc, char* argv[])
     if (errorCode != SUCCESS) {
         return 1;
     }
+
+    archive(args.inputFile, args.outputFile);
 
     return 0;
 }
