@@ -1,0 +1,6 @@
+these are the file's contents. Nothing much interesting here.
+Made for LR1 of OS course
+by
+
+Nik
+Dim

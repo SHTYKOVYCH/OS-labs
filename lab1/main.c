@@ -5,7 +5,7 @@
 #include "error_codes.h"
 #include "error_handler.h"
 #include "parse-args.h"
-#include "json_stringify.h"
+#include "archive.h"
 #include "depack.h"
 
 int main(int argc, char* argv[])
@@ -21,6 +21,8 @@ int main(int argc, char* argv[])
 
     if (args.depack) {
         depack(&args);
+    } else {
+        archive(args.inputFile, args.outputFile);
     }
 
     return 0;
