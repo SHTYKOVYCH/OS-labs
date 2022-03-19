@@ -48,14 +48,21 @@ void jsonStringify(json* JSON, char* string)
     }
     strcat(string, "\",");
 
+    char buff[256];
+
     if (JSON->type == 'f') {
-        char buff[256];
         memset(buff, 0, 256);
         strcat(string, "size:\"");
         itoa(JSON->size, buff);
         strcat(string, buff);
         strcat(string, "\",");
     }
+
+    memset(buff, 0, 256);
+    strcat(string, "deep:\"");
+    itoa(JSON->deep, buff);
+    strcat(string, buff);
+    strcat(string, "\",");
 
     strcat(string, "}");
 }

@@ -3,7 +3,7 @@
 
 #include "string-2-json.h"
 
-void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count);
+void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count, int deep);
 void archive(char *dir, char *archName);
 
 #endif

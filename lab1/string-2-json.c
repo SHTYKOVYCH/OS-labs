@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdio.h>
 
 #include "string-2-json.h"
 #include "parse-args.h"
@@ -70,8 +72,7 @@ int string2json(const char* string, json* jason)
 
 			i += 1;
 		}
-		else if (!strcmp(buff, "size"))
-		{
+		else if (!strcmp(buff, "size")) {
 			i += 3;
 			memset(buff, 0, strlen(buff));
 
@@ -81,6 +82,7 @@ int string2json(const char* string, json* jason)
 				if (c == '\"')
 				{
 					jason->size = (unsigned int)atoi(buff);
+                    i += 1;
 					break;
 				}
 				else
@@ -89,6 +91,25 @@ int string2json(const char* string, json* jason)
 				}
 			}
 		}
+        else if (!strcmp(buff, "deep")) {
+            i += 3;
+            memset(buff, 0, strlen(buff));
+
+            for (; i < strlen(string); ++i)
+            {
+                char c = string[i];
+                if (c == '\"')
+                {
+                    jason->deep = (unsigned)atoi(buff);
+                    i += 1;
+                    break;
+                }
+                else
+                {
+                    buff[strlen(buff)] = c;
+                }
+            }
+        }
 		else
 		{
 			continue;

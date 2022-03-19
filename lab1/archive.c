@@ -15,7 +15,7 @@
 #include "seek-file.h"
 #include "json_stringify.h"
 
-void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count)
+void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count, int deep)
 {
     DIR *dp;    // Указатель на поток директории
     struct dirent *entry;   // Структура данных директории
@@ -46,6 +46,7 @@ void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count)
             jason->name = entry->d_name;
             jason->parentDir = dir;
             jason->type = 'd';
+            jason->deep = deep;
 
             jsonStringify(jason, meta);
             strcat(str, meta);
@@ -55,7 +56,7 @@ void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count)
             free(meta);
             memset(str, 0, 4096);
             
-            sprintDir(filedescr, entry->d_name, str, jason, count); // Ре курсия
+            sprintDir(filedescr, entry->d_name, str, jason, count, deep + 1); // Ре курсия
         }
         else
         {
@@ -74,6 +75,7 @@ void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count)
             jason->parentDir = dir;
             jason->type = 'f';
             jason->size = statbuf.st_size;
+            jason->deep = deep;
 
             jsonStringify(jason, meta);
             strcat(str, meta);
@@ -111,9 +113,21 @@ void archive(char *dir, char *archName) // Можно указать полны�
 
     json *jason = malloc(sizeof(json));
 
-    sprintDir(filedescr, dir, buff, jason, &count);
+    jason->name = dir;
+    jason->deep = 0;
+    jason->parentDir = ".";
+    jason->type = 'd';
 
+    char buffer[1024] = {0};
+    jsonStringify(jason, buffer);
+    writeFile(filedescr, buffer, strlen(buffer));
+
+    sprintDir(filedescr, dir, buff, jason, &count, 1);
+
+    printf("%d\n", count);
     lseek(filedescr, 0L, SEEK_SET);
+    count += 1;
+    printf("%d\n", count);
     write(filedescr, &count, sizeof(count));    // Дописываем в начало обещанное число файлов
 
     free(buff);

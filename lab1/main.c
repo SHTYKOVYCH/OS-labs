@@ -1,6 +1,7 @@
 //
 // Created by dimitis on 27.02.2022.
 //
+#include <stdlib.h>
 
 #include "error_codes.h"
 #include "error_handler.h"

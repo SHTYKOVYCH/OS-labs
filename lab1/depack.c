@@ -19,13 +19,14 @@
 #include "string-2-json.h"
 #include "write_file.h"
 
-char* assemblePath(treeNode* node, char* buffer)
-{
-    buffer = realloc(buffer, strlen(buffer) + strlen(node->name) + 2);
+char *assemblePath(treeNode *node, char *buffer) {
 
     if (node->parentNode != NULL) {
         assemblePath(node->parentNode, buffer);
     }
+
+    int newSize = strlen(buffer) + strlen(node->name) + 2;
+    buffer = realloc(buffer, newSize);
 
     strcat(buffer, node->name);
     strcat(buffer, "/");
@@ -33,15 +34,13 @@ char* assemblePath(treeNode* node, char* buffer)
     return buffer;
 }
 
-int depack(Args* args)
-{
+int depack(Args *args) {
     int fileId = open(args->inputFile, O_RDONLY);
 
     if (fileId < 0) {
         errorHandler(OPENING_FILE_ERROR, "no file with given name found");
         return OPENING_FILE_ERROR;
     }
-
 
     int numOfFiles;
 
@@ -50,24 +49,22 @@ int depack(Args* args)
         return READING_FROM_FILE_ERROR;
     }
 
-    treeNode* root = createDirTree(args->outputFile, NULL);
-    treeNode* dirTree = root;
-    treeNode* parentDir = dirTree;
+    mkdir(args->outputFile, 0777);
 
-    if (strcmp(".", args->outputFile)) {
-        treeNode* baseDir = createDirTree(".", NULL);
-        addDir(dirTree, baseDir);
+    treeNode *dirTree = createDirTree(args->outputFile, NULL);
+    treeNode *parentDir = dirTree;
 
-        mkdir(args->outputFile, 0777);
+    treeNode* leaf = createDirTree(".", dirTree);
 
-        parentDir = baseDir;
-        dirTree = baseDir;
-    }
+    addDir(parentDir, leaf);
+    leaf->deep = 0;
+
+    parentDir = leaf;
 
     json record;
 
     char buffer[1024] = {0};
-    char* path = malloc(1);
+    char *path = malloc(1);
     path[0] = 0;
 
     for (int i = 0; i < numOfFiles; ++i) {
@@ -75,27 +72,23 @@ int depack(Args* args)
 
         errorCode = readJSONFromFile(fileId, buffer);
 
-        if (errorCode == END_OF_FILE) {
-            return SUCCESS;
-        }
-
-        if (errorCode != SUCCESS) {
+        if (errorCode != SUCCESS && errorCode != END_OF_FILE) {
             errorHandler(errorCode, args->inputFile);
             return errorCode;
         }
 
         string2json(buffer, &record);
 
-        if (strcmp(parentDir->name, record.parentDir)) {
-            if (findDir(parentDir, record.parentDir) != NULL) {
-                parentDir = findDir(parentDir, record.parentDir);
-            } else {
-                parentDir = findDir(dirTree, record.parentDir);
+        if (strcmp(parentDir->name, record.parentDir) || record.deep < parentDir->deep) {
+            parentDir = reverseFindDir(parentDir, record.parentDir, record.deep);
+
+            if (parentDir == NULL) {
+                return 0;
             }
         }
 
         if (record.type == 'f') {
-            char* bufferForFile = malloc(record.size);
+            char *bufferForFile = malloc(record.size);
             errorCode = readFile(fileId, bufferForFile, record.size);
 
             if (errorCode != SUCCESS && errorCode != END_OF_FILE) {
@@ -108,7 +101,6 @@ int depack(Args* args)
 
             assemblePath(parentDir, path);
             path = realloc(path, strlen(path) + strlen(record.name) + 2);
-            strcat(path, "/");
             strcat(path, record.name);
 
             int newFileId = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
@@ -134,15 +126,18 @@ int depack(Args* args)
             free(bufferForFile);
             close(newFileId);
         } else {
-            treeNode* newDir = createDirTree(record.name, NULL);
+            treeNode *newDir = createDirTree(record.name, NULL);
             addDir(parentDir, newDir);
+            parentDir = newDir;
 
-            mkdir(assemblePath(newDir, path), 0777);
+            assemblePath(newDir, path);
+
+            mkdir(path, 0777);
         }
         path[0] = 0;
     }
 
-    deleteTree(root);
+    deleteTree(dirTree->parentNode);
 
     free(path);
 

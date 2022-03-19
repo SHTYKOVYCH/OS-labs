@@ -6,6 +6,7 @@ struct json_s
 	char *name;
 	char *parentDir;
 	char type;
+    unsigned int deep;
 	unsigned int size;
 };
 

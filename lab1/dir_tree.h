@@ -10,6 +10,7 @@ struct treeNode_s{
     struct treeNode_s* parentNode;
     struct treeNode_s** childNodes;
     int numOfChildren;
+    int deep;
 };
 
 typedef struct treeNode_s treeNode;
@@ -18,7 +19,9 @@ treeNode* createDirTree(char* dirName, treeNode* parentDir);
 
 treeNode* addDir(treeNode* node, treeNode* child);
 
-treeNode* findDir(treeNode* node, char* dirName);
+treeNode* findDir(treeNode* node, char* dirName, int deep);
+
+treeNode* reverseFindDir(treeNode* node, char* dirName, int deep);
 
 void deleteTree(treeNode* dirTree);
 
