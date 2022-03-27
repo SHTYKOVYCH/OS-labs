@@ -50,13 +50,13 @@ int depack(Args *args) {
     int numOfFiles;
 
     if (read(fileId, &numOfFiles, 4) == -1) {
-        perror("Error on reading archive: ");
+        perror("Error on reading archive");
         close(fileId);
         return ERROR;
     }
 
-    if (mkdir(args->outputFile, 0777)) {
-        perror("Error on creating base directory:");
+    if (mkdir(args->outputFile, 0777) == -1) {
+        perror("Error on creating base directory");
         close(fileId);
         return ERROR;
     }
