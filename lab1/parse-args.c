@@ -5,82 +5,69 @@
 #include "error_handler.h"
 #include "parse-args.h"
 
-char* parseFilename(char* filename, char type)	// 'd' - директория, 'f' - файл
+char *parseFilename(char *filename, char type)    // 'd' - директория, 'f' - файл
 {
-	if (strlen(filename) >= 255)
-	{
-		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла/директории должно содержать менее 255 символов");
-		exit(1);
-	}
-	if (strstr(filename, "/"))	// Исключение запрещённых символов в имени файла. Имя директории не может содержать путь
-	{
-		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла/директории не должно содержать \'/\'");
-		exit(1);
-	}
+    if (strlen(filename) >= 255) {
+        errorHandler(WRONG_PARAMETER_ERROR, "Имя файла/директории должно содержать менее 255 символов");
+        exit(1);
+    }
 
-	if (type == 'd') // Если директория, она вполне может зваться . или ..
-	{
-		return filename;
-	}
+    // Исключение запрещённых символов в имени файла. Имя директории не может содержать путь
+    if (strstr(filename, "/")) {
+        errorHandler(WRONG_PARAMETER_ERROR, "Имя файла/директории не должно содержать \'/\'");
+        exit(1);
+    }
 
-	if (!strcmp(filename, ".") || !strcmp(filename, ".."))	// Зарезервированные имена
-	{
-		errorHandler(WRONG_PARAMETER_ERROR, "Имя файла зарезервировано");
-		exit(1);
-	}
-	return filename;
+    // Если директория, она вполне может зваться . или ..
+    if (type == 'd') {
+        return filename;
+    }
+
+    // Зарезервированные имена
+    if (!strcmp(filename, ".") || !strcmp(filename, "..")) {
+        errorHandler(WRONG_PARAMETER_ERROR, "Имя файла зарезервировано");
+        exit(1);
+    }
+
+    return filename;
 }
 
-int parseArgs(int argc, char **argv, Args *args)
-{
-	args->depack = 0;
-	args->outputFile = "archive";
-	args->inputFile = "";
+int parseArgs(int argc, char **argv, Args *args) {
+    args->depack = 0;
+    args->outputFile = "archive";
+    args->inputFile = "";
 
-	for (int i = 1; i < argc; i++)
-    {
-    	char *arg = argv[i];
-    	if (!strcmp(arg, "-d"))
-    	{
-    		args->depack = 1;
-    	}
-    	else if (!strcmp(arg, "-i"))
-    	{
-    		if (i + 1 == argc)	// Будем читать следующий элемент, если возможно
-    		{
-                errorHandler(MISSING_PARAMETER_ERROR, "input filename required after flag -i");
-    			return MISSING_PARAMETER_ERROR;
-    		}
-    		else
-    		{
-    			args->inputFile = parseFilename(argv[i + 1], 'f');
-    			++i;
-    		}
-    	}
-    	else if (!strcmp(arg, "-o"))
-    	{
-    		if (i + 1 == argc)
-    		{
-                errorHandler(MISSING_PARAMETER_ERROR, "output filename required after flag -o");
-    			return MISSING_PARAMETER_ERROR;
-    		}
-    		else
-    		{
-    			args->outputFile = parseFilename(argv[i + 1], 'f');
-    			++i;
-    		}
-    	}
-    	else
-    	{
-        	return NOT_EXISTING_PARAMETER_ERROR;
-    	}
+    for (int i = 1; i < argc; i++) {
+        char *arg = argv[i];
+        if (!strcmp(arg, "-d")) {
+            args->depack = 1;
+        } else if (!strcmp(arg, "-i")) {
+            if (i + 1 == argc)    // Будем читать следующий элемент, если возможно
+            {
+                printf("Error: input filename required after flag -i");
+                return ERROR;
+            } else {
+                args->inputFile = parseFilename(argv[i + 1], 'f');
+                ++i;
+            }
+        } else if (!strcmp(arg, "-o")) {
+            if (i + 1 == argc) {
+                printf("Error: output filename required after flag -o");
+                return ERROR;
+            } else {
+                args->outputFile = parseFilename(argv[i + 1], 'f');
+                ++i;
+            }
+        } else {
+            return ERROR;
+        }
     }
 
-    if (!strcmp(args->inputFile, ""))	// Если так и не получили имя входного файла
-    {
-        errorHandler(MISSING_PARAMETER_ERROR, "input filename required");
-    	return MISSING_PARAMETER_ERROR;
+    // Если так и не получили имя входного файла
+    if (!strcmp(args->inputFile, "")) {
+        printf("Error: input filename required");
+        return ERROR;
     }
 
-	return SUCCESS;
+    return SUCCESS;
 }

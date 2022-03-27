@@ -6,7 +6,6 @@
 
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,13 +19,19 @@
 #include "write_file.h"
 
 char *assemblePath(treeNode *node, char *buffer) {
+    if (!node) {
+        return buffer;
+    }
 
     if (node->parentNode != NULL) {
         assemblePath(node->parentNode, buffer);
     }
 
     int newSize = strlen(buffer) + strlen(node->name) + 2;
-    buffer = realloc(buffer, newSize);
+    if ((buffer = realloc(buffer, newSize)) == NULL) {
+        perror("Error on allocating memory");
+        return NULL;
+    };
 
     strcat(buffer, node->name);
     strcat(buffer, "/");
@@ -38,25 +43,44 @@ int depack(Args *args) {
     int fileId = open(args->inputFile, O_RDONLY);
 
     if (fileId < 0) {
-        errorHandler(OPENING_FILE_ERROR, "no file with given name found");
-        return OPENING_FILE_ERROR;
+        perror("Error on opening archive");
+        return ERROR;
     }
 
     int numOfFiles;
 
-    if (read(fileId, &numOfFiles, 4) != 4) {
-        errorHandler(READING_FROM_FILE_ERROR, args->inputFile);
-        return READING_FROM_FILE_ERROR;
+    if (read(fileId, &numOfFiles, 4) == -1) {
+        perror("Error on reading archive: ");
+        close(fileId);
+        return ERROR;
     }
 
-    mkdir(args->outputFile, 0777);
+    if (mkdir(args->outputFile, 0777)) {
+        perror("Error on creating base directory:");
+        close(fileId);
+        return ERROR;
+    }
 
     treeNode *dirTree = createDirTree(args->outputFile, NULL);
+    if (dirTree == NULL) {
+        close(fileId);
+        return ERROR;
+    }
     treeNode *parentDir = dirTree;
+    treeNode *root = dirTree;
 
-    treeNode* leaf = createDirTree(".", dirTree);
+    treeNode *leaf = createDirTree(".", dirTree);
+    if (leaf == NULL) {
+        close(fileId);
+        deleteTree(dirTree);
+        return ERROR;
+    }
 
-    addDir(parentDir, leaf);
+    if (addDir(parentDir, leaf) == NULL) {
+        close(fileId);
+        deleteTree(dirTree);
+        return ERROR;
+    }
     leaf->deep = 0;
 
     parentDir = leaf;
@@ -65,37 +89,81 @@ int depack(Args *args) {
 
     char buffer[1024] = {0};
     char *path = malloc(1);
-    path[0] = 0;
+    if (path == NULL) {
+        perror("Error on allocating memory");
+        return ERROR;
+    }
 
     for (int i = 0; i < numOfFiles; ++i) {
+        path[0] = 0;
         int errorCode = 0;
 
         errorCode = readJSONFromFile(fileId, buffer);
 
         if (errorCode != SUCCESS && errorCode != END_OF_FILE) {
-            errorHandler(errorCode, args->inputFile);
+            free(path);
+            deleteTree(root);
             return errorCode;
         }
 
-        string2json(buffer, &record);
+        if (string2json(buffer, &record) != SUCCESS) {
+            printf("Error: unexpected error on parsing file");
+            free(path);
+            deleteTree(root);
+
+            if (record.name == NULL) {
+                free(record.name);
+            }
+
+            if (record.parentDir == NULL) {
+                free(record.parentDir);
+            }
+
+            return ERROR;
+        }
+
 
         if (strcmp(parentDir->name, record.parentDir) || record.deep < parentDir->deep) {
             parentDir = reverseFindDir(parentDir, record.parentDir, record.deep);
 
             if (parentDir == NULL) {
-                return 0;
+                printf("Unenspected error on searching parent directory");
+                return ERROR;
             }
         }
 
         if (record.type == 'f') {
             char *bufferForFile = malloc(record.size);
+            if (bufferForFile == NULL) {
+                perror("Error on allocating memory");
+                free(path);
+                deleteTree(root);
+                if (record.name == NULL) {
+                    free(record.name);
+                }
+
+                if (record.parentDir == NULL) {
+                    free(record.parentDir);
+                }
+                return ERROR;
+            }
+
             errorCode = readFile(fileId, bufferForFile, record.size);
 
             if (errorCode != SUCCESS && errorCode != END_OF_FILE) {
-                errorHandler(errorCode, args->inputFile);
+                perror("Error on reading file");
+
                 free(path);
+                deleteTree(root);
                 free(bufferForFile);
-                deleteTree(dirTree);
+                if (record.name == NULL) {
+                    free(record.name);
+                }
+
+                if (record.parentDir == NULL) {
+                    free(record.parentDir);
+                }
+                close(fileId);
                 return errorCode;
             }
 
@@ -106,20 +174,38 @@ int depack(Args *args) {
             int newFileId = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
 
             if (newFileId == -1) {
-                errorHandler(OPENING_FILE_ERROR, path);
+                perror("Error on opening file");
+
                 free(path);
+                deleteTree(root);
                 free(bufferForFile);
-                deleteTree(dirTree);
+                if (record.name == NULL) {
+                    free(record.name);
+                }
+
+                if (record.parentDir == NULL) {
+                    free(record.parentDir);
+                }
+                close(fileId);
                 return OPENING_FILE_ERROR;
             }
 
             errorCode = writeFile(newFileId, bufferForFile, record.size);
 
             if (errorCode != SUCCESS) {
-                errorHandler(errorCode, record.name);
+                perror("Error on writing file");
+
                 free(path);
+                deleteTree(root);
                 free(bufferForFile);
-                deleteTree(dirTree);
+                if (record.name == NULL) {
+                    free(record.name);
+                }
+
+                if (record.parentDir == NULL) {
+                    free(record.parentDir);
+                }
+                close(fileId);
                 return errorCode;
             }
 
@@ -127,19 +213,66 @@ int depack(Args *args) {
             close(newFileId);
         } else {
             treeNode *newDir = createDirTree(record.name, NULL);
-            addDir(parentDir, newDir);
+            if (newDir == NULL) {
+                free(path);
+                deleteTree(root);
+                if (record.name == NULL) {
+                    free(record.name);
+                }
+
+                if (record.parentDir == NULL) {
+                    free(record.parentDir);
+                }
+                close(fileId);
+                return ERROR;
+            }
+
+            if (addDir(parentDir, newDir) == NULL) {
+                free(path);
+                deleteTree(root);
+                if (record.name == NULL) {
+                    free(record.name);
+                }
+
+                if (record.parentDir == NULL) {
+                    free(record.parentDir);
+                }
+                close(fileId);
+                return ERROR;
+            }
+
             parentDir = newDir;
 
-            assemblePath(newDir, path);
+            path = assemblePath(newDir, path);
 
-            mkdir(path, 0777);
+            if (mkdir(path, 0777) == -1) {
+                perror("Error on creating dir");
+                free(path);
+                deleteTree(root);
+                if (record.name == NULL) {
+                    free(record.name);
+                }
+
+                if (record.parentDir == NULL) {
+                    free(record.parentDir);
+                }
+                close(fileId);
+                return ERROR;
+            }
         }
-        path[0] = 0;
     }
 
-    deleteTree(dirTree->parentNode);
+    deleteTree(root);
 
     free(path);
+
+    if (record.name == NULL) {
+        free(record.name);
+    }
+
+    if (record.parentDir == NULL) {
+        free(record.parentDir);
+    }
 
     close(fileId);
 

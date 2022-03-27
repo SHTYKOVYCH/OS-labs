@@ -3,14 +3,16 @@
 //
 
 #include <unistd.h>
+#include <stdio.h>
 
 #include "error_codes.h"
 #include "write_file.h"
 
-int writeFile(int fileId, char* buffer, int numOfBytes)
-{
+
+int writeFile(int fileId, char *buffer, unsigned long numOfBytes) {
     if (write(fileId, buffer, numOfBytes) == -1) {
-        return WRITING_TO_FILE_ERROR;
+        perror("Error on writing to file");
+        return ERROR;
     }
 
     return SUCCESS;

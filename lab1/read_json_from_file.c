@@ -3,16 +3,14 @@
 //
 #include <unistd.h>
 #include <string.h>
-#include <stdlib.h>
+#include <stdio.h>
 
 #include "read_json_from_file.h"
 #include "read-file.h"
 #include "error_codes.h"
 
-int readFieldName(int fileId, char* buffer, int* bufferIndex)
-{
-
-    while(1) {
+int readFieldName(int fileId, char *buffer, int *bufferIndex) {
+    while (1) {
         int errorCode;
 
         errorCode = readFile(fileId, &buffer[*bufferIndex], 1);
@@ -30,8 +28,7 @@ int readFieldName(int fileId, char* buffer, int* bufferIndex)
     }
 }
 
-int readFieldContent(int fileId, char* buffer, int *bufferIndex)
-{
+int readFieldContent(int fileId, char *buffer, int *bufferIndex) {
     int errorCode = readFile(fileId, &buffer[*bufferIndex], 1);
 
     if (errorCode != SUCCESS) {
@@ -39,12 +36,13 @@ int readFieldContent(int fileId, char* buffer, int *bufferIndex)
     }
 
     if (buffer[*bufferIndex] != '\"') {
-        return FILE_STRUCTURE_ERROR;
+        printf("Error: wrong file structure");
+        return ERROR;
     }
 
     *bufferIndex += 1;
 
-    while(1) {
+    while (1) {
         errorCode = readFile(fileId, &buffer[*bufferIndex], 1);
 
         if (errorCode != SUCCESS) {
@@ -64,8 +62,7 @@ int readFieldContent(int fileId, char* buffer, int *bufferIndex)
     }
 }
 
-int readJSONFromFile(int fileId, char* accumulator)
-{
+int readJSONFromFile(int fileId, char *accumulator) {
     memset(accumulator, 0, 1024);
 
     int errorCode = readFile(fileId, accumulator, 1);
@@ -75,7 +72,8 @@ int readJSONFromFile(int fileId, char* accumulator)
     }
 
     if (accumulator[0] != '{') {
-        return FILE_STRUCTURE_ERROR;
+        printf("Error: wrong file structure");
+        return ERROR;
     }
 
     int bufferIndex = 1;
@@ -95,8 +93,10 @@ int readJSONFromFile(int fileId, char* accumulator)
 
         if (errorCode == END_OF_FILE) {
             if (accumulator[bufferIndex - 1] != '}') {
-                return FILE_STRUCTURE_ERROR;
+                printf("Error: wrong file structure");
+                return ERROR;
             }
+
             return SUCCESS;
         }
 
@@ -117,7 +117,8 @@ int readJSONFromFile(int fileId, char* accumulator)
         }
 
         if (accumulator[bufferIndex] != ',') {
-            return FILE_STRUCTURE_ERROR;
+            printf("Error: wrong file structure");
+            return ERROR;
         }
 
         bufferIndex += 1;

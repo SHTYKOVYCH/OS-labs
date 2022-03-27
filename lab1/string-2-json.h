@@ -3,15 +3,21 @@
 
 struct json_s
 {
-	char *name;
-	char *parentDir;
-	char type;
+    char *name;
+    char *parentDir;
+    char type;
     unsigned int deep;
-	unsigned int size;
+    unsigned int size;
 };
 
 typedef struct json_s json;
 
-int string2json(const char* string, json *jason);
+/**
+ * Функция переводит строку в структуру JSON
+ * @param string - строка, которую надо перевести в структуру
+ * @param jason - указатель на структуру
+ * @return - код успеха операции
+ */
+int string2json(const char *string, json *jason);
 
 #endif

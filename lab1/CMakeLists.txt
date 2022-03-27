@@ -13,7 +13,6 @@ set(HEADERS
         string-2-json.h
         json_stringify.h
         read_json_from_file.h
-        seek-file.h
         dir_tree.h
         archive.h
         depack.h
@@ -28,14 +27,13 @@ set(SOURCES
         string-2-json.c
         json_stringify.c
         read_json_from_file.c
-        seek-file.c
         dir_tree.c
         depack.c
         archive.c
         )
 
-set( GXX_FLAGS "-g -fsanitize=address" )
+set(GXX_FLAGS "-g -fsanitize=address")
 
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GXX_FLAGS}" )
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GXX_FLAGS}")
 
-add_executable(${PROJECT} ${HEADERS} ${SOURCES} )
+add_executable(${PROJECT} ${HEADERS} ${SOURCES})

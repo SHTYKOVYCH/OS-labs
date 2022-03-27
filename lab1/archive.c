@@ -5,42 +5,46 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 
-#include "error_codes.h"
 #include "archive.h"
 #include "read-file.h"
 #include "write_file.h"
-#include "seek-file.h"
 #include "json_stringify.h"
+#include "error_codes.h"
 
-void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count, int deep)
-{
-    DIR *dp;    // Указатель на поток директории
-    struct dirent *entry;   // Структура данных директории
-    struct stat statbuf; // Статусная информация о файле в директории
- 
-    if ((dp = opendir(dir)) == NULL)
-    {
+int sprintDir(int filedescr, char *dir, char *str, json *jason, unsigned int *count, int deep) {
+    DIR *dp;
+    struct dirent *entry;
+    struct stat statbuf;
+
+    if ((dp = opendir(dir)) == NULL) {
         perror(dir);
-        return;
+        return ERROR;
     }
-    
-    chdir(dir); // Проникаем в рассматриваемую директорию
-    while ((entry = readdir(dp)) != NULL)   // Идём в глубину
-    {
-        lstat(entry->d_name, &statbuf); // Считываем данные о сущности
-        if (entry->d_type == 4) // Тут дело такое. Сущность - файл: код 4, сущность - директория: код 8
-        {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)    // Директории . и .. тоже попадают в обработчик, но они нам не нужны
-            {
+
+    chdir(dir);
+    while ((entry = readdir(dp)) != NULL) {
+        // Считываем данные о сущности
+        if (lstat(entry->d_name, &statbuf)) {
+            perror("Error on reading dir stats");
+        }
+
+        // Если сущность - папка
+        if (entry->d_type == 4) {
+            // Отсеиваем ссылки . и ..
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
                 continue;
-            } 
+            }
 
             (*count)++;
 
-            char *meta = malloc(sizeof(char) * 1024); // Далее: читаем мету, переводим в джейсон и загружаем в буфер
+            char *meta;
+            if ((meta = malloc(sizeof(char) * 1024)) == NULL) {
+                perror("Error on allocating memory");
+                return ERROR;
+            }
+
             memset(meta, 0, 1024);
 
             jason->name = entry->d_name;
@@ -51,27 +55,49 @@ void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count, int
             jsonStringify(jason, meta);
             strcat(str, meta);
 
-            writeFile(filedescr, str, strlen(str)); // Сразу пишем в архив и чистим буфер
+            if (writeFile(filedescr, str, strlen(str)) != SUCCESS) {
+                return ERROR;
+            }
 
             free(meta);
             memset(str, 0, 4096);
-            
-            sprintDir(filedescr, entry->d_name, str, jason, count, deep + 1); // Ре курсия
-        }
-        else
-        {
-            char *abs_filename = malloc(sizeof(char) * 1024);
+
+            if (sprintDir(filedescr, entry->d_name, str, jason, count, deep + 1) != SUCCESS) {
+                return ERROR;
+            }
+        } else {
+            // если файл
+            char *abs_filename;
+            if ((abs_filename = malloc(sizeof(char) * 1024)) == NULL) {
+                perror("Error on allocating memory");
+                return ERROR;
+            }
             memset(abs_filename, 0, 1024);
-            char *meta = malloc(sizeof(char) * 1024);
+
+            char *meta;
+            if ((meta = malloc(sizeof(char) * 1024)) == NULL) {
+                perror("Error on allocating memory");
+                return ERROR;
+            }
             memset(meta, 0, 1024);
-            char *contents = malloc(sizeof(char) * 4096);
+
+            char *contents;
+            if ((contents = malloc(sizeof(char) * 4096)) == NULL) {
+                perror("Error on allocating memory");
+                return ERROR;
+            }
             memset(contents, 0, 4096);
 
-            getcwd(abs_filename, 1024); // Путь до файла, чей контент надо считать
+            // Путь до файла, чей контент надо считать
+            if (getcwd(abs_filename, 1024) == NULL) {
+                perror("Error on getting path to file");
+                return ERROR;
+            }
+
             strcat(abs_filename, "/");
             strcat(abs_filename, entry->d_name);
 
-            jason->name = entry->d_name;    // Так же работаем с метой
+            jason->name = entry->d_name;
             jason->parentDir = dir;
             jason->type = 'f';
             jason->size = statbuf.st_size;
@@ -80,13 +106,35 @@ void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count, int
             jsonStringify(jason, meta);
             strcat(str, meta);
 
-            int file = open(abs_filename, O_RDONLY);    // Собственно читаем контент, и пишем в буфер
-            readFile(file, contents, statbuf.st_size);
+            int file = open(abs_filename, O_RDONLY);
+            if (file == -1) {
+                perror("Error on opening file");
+                free(meta);
+                free(abs_filename);
+                free(contents);
+                close(file);
+                return ERROR;
+            }
+
+            if (readFile(file, contents, statbuf.st_size) != SUCCESS) {
+                free(meta);
+                free(abs_filename);
+                free(contents);
+                close(file);
+                return ERROR;
+            }
             close(file);
 
             strcat(str, contents);
 
-            writeFile(filedescr, str, strlen(str)); // Всю инфу в архив
+            if (writeFile(filedescr, str, strlen(str)) != SUCCESS) {
+                perror("Error on writing to file");
+                free(meta);
+                free(abs_filename);
+                free(contents);
+                close(file);
+                return ERROR;
+            }
 
             free(meta);
             free(abs_filename);
@@ -97,21 +145,41 @@ void sprintDir(int filedescr, char *dir, char* str, json* jason, int *count, int
         }
     }
     chdir("..");
-    closedir(dp);   
+    closedir(dp);
 }
 
-void archive(char *dir, char *archName) // Можно указать полный или относительный путь до архивируемой папки. archName - имя файла, который программа будет выплевывать как архив
-{
-    int filedescr = open(archName, O_WRONLY | O_CREAT, 0777);   // Создаём архив
+int archive(char *dir, char *archName) {
+    int filedescr = open(archName, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+
+    if (filedescr == -1) {
+        perror("Erro on opening file");
+        return ERROR;
+    }
 
     unsigned int count = 0;
 
-    write(filedescr, &count, sizeof(count));    // Пробел в начале файла для числа файлов в архиве
+    // Оставляем место под кол-во записей
+    if (write(filedescr, &count, sizeof(count)) == -1) {
+        perror("Error on writing to file");
+        close(filedescr);
+        return ERROR;
+    }
 
     char *buff = malloc(sizeof(char) * 4096);
+    if (buff == NULL) {
+        perror("Error on allocating memory");
+        close(filedescr);
+        return ERROR;
+    }
+
     memset(buff, 0, 4096);
 
+    // Пишем информацию о базовой директории
     json *jason = malloc(sizeof(json));
+    if (jason == NULL) {
+        perror("Error on allocating memory");
+        return ERROR;
+    }
 
     jason->name = dir;
     jason->deep = 0;
@@ -120,15 +188,32 @@ void archive(char *dir, char *archName) // Можно указать полны�
 
     char buffer[1024] = {0};
     jsonStringify(jason, buffer);
-    writeFile(filedescr, buffer, strlen(buffer));
+    if (writeFile(filedescr, buffer, strlen(buffer)) != SUCCESS ||
+        sprintDir(filedescr, dir, buff, jason, &count, 1) != SUCCESS) {
+        free(jason);
+        free(buff);
+        close(filedescr);
+        return ERROR;
+    }
 
-    sprintDir(filedescr, dir, buff, jason, &count, 1);
+    // Пишем в начало кол-во записей в архиве
+    if (lseek(filedescr, 0L, SEEK_SET) == -1) {
+        perror("Error on moving pointer in file");
+        free(jason);
+        free(buff);
+        close(filedescr);
+        return ERROR;
+    }
 
-    printf("%d\n", count);
-    lseek(filedescr, 0L, SEEK_SET);
     count += 1;
-    printf("%d\n", count);
-    write(filedescr, &count, sizeof(count));    // Дописываем в начало обещанное число файлов
+
+    if (write(filedescr, &count, sizeof(count)) == -1) {
+        perror("Error on writing to file");
+        free(jason);
+        free(buff);
+        close(filedescr);
+        return ERROR;
+    }
 
     free(buff);
     free(jason);

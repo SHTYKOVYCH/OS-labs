@@ -18,13 +18,12 @@
  * @param additionalString
  */
 
-void errorHandler(int error, const char* additionalString)
-{
+void errorHandler(int error, const char *additionalString) {
     if (error == SUCCESS) {
         return;
     }
 
-    char* errorString = malloc(sizeof(char) * 500);
+    char *errorString = malloc(sizeof(char) * 500);
     memset(errorString, 0, 500);
 
     strcat(errorString, "Error: ");
@@ -56,7 +55,7 @@ void errorHandler(int error, const char* additionalString)
             strcat(errorString, additionalString);
             strcat(errorString, "\n");
             break;
-        case(OPENING_FILE_ERROR):
+        case (OPENING_FILE_ERROR):
             strcat(errorString, "on opening file ");
             strcat(errorString, additionalString);
             strcat(errorString, "\n");

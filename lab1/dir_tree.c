@@ -7,12 +7,17 @@
 #include <stdio.h>
 
 #include "dir_tree.h"
+#include "error_codes.h"
 
-treeNode* createDirTree(char* dirName, treeNode* parentDir)
-{
-    treeNode* dirRoot = malloc(sizeof(treeNode));
 
-    dirRoot->name = malloc(strlen(dirName)+1);
+treeNode *createDirTree(char *dirName, treeNode *parentDir) {
+    treeNode *dirRoot;
+    if ((dirRoot = malloc(sizeof(treeNode))) == NULL) {
+        perror("Error on creating dir tree:");
+        return NULL;
+    }
+
+    dirRoot->name = malloc(strlen(dirName) + 1);
     strcpy(dirRoot->name, dirName);
     dirRoot->parentNode = parentDir;
     dirRoot->childNodes = NULL;
@@ -22,9 +27,12 @@ treeNode* createDirTree(char* dirName, treeNode* parentDir)
     return dirRoot;
 }
 
-treeNode* addDir(treeNode* node, treeNode* child)
-{
-    node->childNodes = realloc(node->childNodes, node->numOfChildren*sizeof(treeNode*) + sizeof(treeNode*));
+treeNode *addDir(treeNode *node, treeNode *child) {
+    node->childNodes = realloc(node->childNodes, node->numOfChildren * sizeof(treeNode *) + sizeof(treeNode *));
+    if (node->childNodes == NULL) {
+        perror("Error on allocating memory");
+        return NULL;
+    }
 
     node->childNodes[node->numOfChildren] = child;
     node->numOfChildren += 1;
@@ -35,27 +43,7 @@ treeNode* addDir(treeNode* node, treeNode* child)
     return child;
 }
 
-treeNode* findDir(treeNode* root, char* dirName, int deep)
-{
-    if (!strcmp(root->name, dirName) && root->deep == deep) {
-        return root;
-    }
-
-    if (root->numOfChildren > 0) {
-        for (int i = root->numOfChildren - 1; i > -1; --i) {
-            treeNode* result = findDir(root->childNodes[i], dirName, deep);
-
-            if (result != NULL) {
-                return result;
-            }
-        }
-    }
-
-    return NULL;
-}
-
-treeNode* reverseFindDir(treeNode* root, char* dirName, int deep)
-{
+treeNode *reverseFindDir(treeNode *root, char *dirName, int deep) {
     if (root->parentNode != NULL && root->deep > -1) {
         if (!strcmp(root->parentNode->name, dirName)) {
             return root->parentNode;
@@ -67,7 +55,7 @@ treeNode* reverseFindDir(treeNode* root, char* dirName, int deep)
     return NULL;
 }
 
-void deleteTree(treeNode* root) {
+void deleteTree(treeNode *root) {
     if (root == NULL) {
         return;
     }

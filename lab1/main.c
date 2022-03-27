@@ -9,8 +9,7 @@
 #include "archive.h"
 #include "depack.h"
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char *argv[]) {
     int errorCode;
     Args args = {};
 

@@ -3,18 +3,15 @@
 //
 
 #include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
 
 #include "json_stringify.h"
 
-void itoa(int number, char* buffer)
-{
+void itoa(int number, char *buffer) {
     sprintf(buffer, "%d", number);
 }
 
-void escapeString(char* buffer, char* string)
-{
+void escapeString(char *buffer, char *string) {
     int i;
     for (i = 0; i < strlen(string); i += 1) {
         if (string[i] == '\"') {
@@ -26,8 +23,7 @@ void escapeString(char* buffer, char* string)
     }
 }
 
-void jsonStringify(json* JSON, char* string)
-{
+void jsonStringify(json *JSON, char *string) {
     memset(string, 0, 1024);
 
     strcat(string, "{");

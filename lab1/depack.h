@@ -9,9 +9,20 @@
 #include "dir_tree.h"
 #include "string-2-json.h"
 
-char* assemblePath(treeNode* node, char* buffer);
-void createDir(json* record, treeNode* dirTree);
-void createFile(json* record, treeNode* dirTree, int fileId);
-int depack(Args* args);
+/**
+ * Функци собирает путь до указаной папки
+ *
+ * @param node - указатель на элемент дерева папок
+ * @param buffer - укзатель на буффер(минимальный размер - 1 байт), который будет содержать в себе путь до папки
+ * @return - указатель на динамическую строку - путь до папки
+ */
+char *assemblePath(treeNode *node, char *buffer);
+
+/**
+ * Функция распаковывает архив
+ * @param args - входные параметры функции
+ * @return - код выполнения операции
+ */
+int depack(Args *args);
 
 #endif //OS_DEPACK_H
