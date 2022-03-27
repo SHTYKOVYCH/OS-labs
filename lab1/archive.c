@@ -13,7 +13,7 @@
 #include "json_stringify.h"
 #include "error_codes.h"
 
-int sprintDir(int filedescr, char *dir, char *str, json *jason, unsigned int *count, int deep) {
+int sprintDir(int filedescr, char *dir, json *jason, unsigned int *count, int deep) {
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
@@ -53,16 +53,14 @@ int sprintDir(int filedescr, char *dir, char *str, json *jason, unsigned int *co
             jason->deep = deep;
 
             jsonStringify(jason, meta);
-            strcat(str, meta);
 
-            if (writeFile(filedescr, str, strlen(str)) != SUCCESS) {
+            if (writeFile(filedescr, meta, strlen(meta)) != SUCCESS) {
                 return ERROR;
             }
 
             free(meta);
-            memset(str, 0, 4096);
 
-            if (sprintDir(filedescr, entry->d_name, str, jason, count, deep + 1) != SUCCESS) {
+            if (sprintDir(filedescr, entry->d_name, jason, count, deep + 1) != SUCCESS) {
                 return ERROR;
             }
         } else {
@@ -82,11 +80,18 @@ int sprintDir(int filedescr, char *dir, char *str, json *jason, unsigned int *co
             memset(meta, 0, 1024);
 
             char *contents;
-            if ((contents = malloc(sizeof(char) * 4096)) == NULL) {
+            if ((contents = malloc(sizeof(char) * statbuf.st_size)) == NULL) {
                 perror("Error on allocating memory");
                 return ERROR;
             }
-            memset(contents, 0, 4096);
+            memset(contents, 0, statbuf.st_size);
+
+            char *str;
+            if ((str = malloc(sizeof(char) * (2048 + statbuf.st_size))) == NULL) {
+                perror("Error on allocating memory");
+                return ERROR;
+            }
+            memset(str, 0, (2048 + statbuf.st_size));
 
             // Путь до файла, чей контент надо считать
             if (getcwd(abs_filename, 1024) == NULL) {
@@ -112,6 +117,7 @@ int sprintDir(int filedescr, char *dir, char *str, json *jason, unsigned int *co
                 free(meta);
                 free(abs_filename);
                 free(contents);
+                free(str);
                 close(file);
                 return ERROR;
             }
@@ -120,6 +126,7 @@ int sprintDir(int filedescr, char *dir, char *str, json *jason, unsigned int *co
                 free(meta);
                 free(abs_filename);
                 free(contents);
+                free(str);
                 close(file);
                 return ERROR;
             }
@@ -132,6 +139,7 @@ int sprintDir(int filedescr, char *dir, char *str, json *jason, unsigned int *co
                 free(meta);
                 free(abs_filename);
                 free(contents);
+                free(str);
                 close(file);
                 return ERROR;
             }
@@ -139,7 +147,7 @@ int sprintDir(int filedescr, char *dir, char *str, json *jason, unsigned int *co
             free(meta);
             free(abs_filename);
             free(contents);
-            memset(str, 0, 4096);
+            free(str);
 
             (*count)++;
         }
@@ -165,15 +173,6 @@ int archive(char *dir, char *archName) {
         return ERROR;
     }
 
-    char *buff = malloc(sizeof(char) * 4096);
-    if (buff == NULL) {
-        perror("Error on allocating memory");
-        close(filedescr);
-        return ERROR;
-    }
-
-    memset(buff, 0, 4096);
-
     // Пишем информацию о базовой директории
     json *jason = malloc(sizeof(json));
     if (jason == NULL) {
@@ -189,9 +188,8 @@ int archive(char *dir, char *archName) {
     char buffer[1024] = {0};
     jsonStringify(jason, buffer);
     if (writeFile(filedescr, buffer, strlen(buffer)) != SUCCESS ||
-        sprintDir(filedescr, dir, buff, jason, &count, 1) != SUCCESS) {
+        sprintDir(filedescr, dir, jason, &count, 1) != SUCCESS) {
         free(jason);
-        free(buff);
         close(filedescr);
         return ERROR;
     }
@@ -200,7 +198,6 @@ int archive(char *dir, char *archName) {
     if (lseek(filedescr, 0L, SEEK_SET) == -1) {
         perror("Error on moving pointer in file");
         free(jason);
-        free(buff);
         close(filedescr);
         return ERROR;
     }
@@ -210,12 +207,10 @@ int archive(char *dir, char *archName) {
     if (write(filedescr, &count, sizeof(count)) == -1) {
         perror("Error on writing to file");
         free(jason);
-        free(buff);
         close(filedescr);
         return ERROR;
     }
 
-    free(buff);
     free(jason);
     close(filedescr);
 }
