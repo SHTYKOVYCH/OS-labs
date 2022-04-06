@@ -169,6 +169,20 @@ int depack(Args *args) {
 
             assemblePath(parentDir, path);
             path = realloc(path, strlen(path) + strlen(record.name) + 2);
+            if (path == NULL) {
+                deleteTree(root);
+                free(bufferForFile);
+                if (record.name == NULL) {
+                    free(record.name);
+                }
+
+                if (record.parentDir == NULL) {
+                    free(record.parentDir);
+                }
+                close(fileId);
+                return ERROR;
+            }
+
             strcat(path, record.name);
 
             int newFileId = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
