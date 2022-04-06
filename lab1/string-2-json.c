@@ -61,7 +61,6 @@ int string2json(const char *string, json *jason) {
                 }
                 if (c == '\"') {
                     jason->parentDir = (char *) malloc(strlen(buff));
-                    g
                     if (jason->parentDir == NULL) {
                         perror("Error on allocating memory");
                         return ERROR;

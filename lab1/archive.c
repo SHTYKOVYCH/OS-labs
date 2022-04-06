@@ -132,9 +132,17 @@ int sprintDir(int filedescr, char *dir, json *jason, unsigned int *count, int de
             }
             close(file);
 
-            strcat(str, contents);
-
             if (writeFile(filedescr, str, strlen(str)) != SUCCESS) {
+                perror("Error on writing to file");
+                free(meta);
+                free(abs_filename);
+                free(contents);
+                free(str);
+                close(file);
+                return ERROR;
+            }
+
+            if (writeFile(filedescr, contents, statbuf.st_size) != SUCCESS) {
                 perror("Error on writing to file");
                 free(meta);
                 free(abs_filename);
