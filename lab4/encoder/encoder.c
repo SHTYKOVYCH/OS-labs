@@ -13,11 +13,11 @@ int main(int argc, char *argv[]) {
 
     char tmp;
 
-    tmp = getchar();
+    tmp = getc(stdin);
     while (tmp != '\n' && tmp != EOF && tmp != 0) {
         string[len] = tmp;
         len += 1;
-        tmp = getchar();
+        tmp = getc(stdin);
     }
 
     printf("%c\n", key);
