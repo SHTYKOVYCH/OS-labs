@@ -161,6 +161,8 @@ int main() {
     act.sa_flags = 0;
     sigaction(SIGINT, &act, NULL);
 
+    signal(SIGCHLD, SIG_IGN);
+
     do {
         printPath();
         printf(" $ ");
