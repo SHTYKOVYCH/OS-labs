@@ -6,7 +6,7 @@
 #include "client.h"
 
 struct message {
-    char message[4056];
+    char message[4096];
     char senderName[256];
 };
 

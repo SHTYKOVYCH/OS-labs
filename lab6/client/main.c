@@ -32,7 +32,6 @@ void exitFunc(int sig) {
 
 void *clientReader() {
     do {
-        printf("Press 0 to start typing");
         char sender[256] = {0};
         char message[4096] = {0};
 
@@ -48,10 +47,7 @@ void *clientReader() {
             exit(EXIT_SUCCESS);
         }
 
-        pthread_mutex_lock(&consoleAwaible);
         printf("\r%s : %s", sender, message);
-        pthread_mutex_unlock(&consoleAwaible);
-
     } while (1);
 }
 
@@ -63,7 +59,6 @@ int main(int argc, char **argv) {
     }
 
     client.readThread = -1;
-    pthread_mutex_init(&consoleAwaible, NULL);
 
     int sock;
 
@@ -149,7 +144,13 @@ int main(int argc, char **argv) {
     }
 
     int userChoice;
-    printf("Commands:\n1 - Create room\n2 - Join room\n");
+
+    if (numOfRooms == 0) {
+        printf("Commands:\n1 - Create room\n");
+    } else {
+        printf("Commands:\n1 - Create room\n2 - Join room\n");
+    }
+
     do {
         printf(" > ");
         scanf("%d", &userChoice);
@@ -200,45 +201,27 @@ int main(int argc, char **argv) {
     pthread_attr_init(&readThreadParams);
     pthread_attr_setdetachstate(&readThreadParams, PTHREAD_CREATE_DETACHED);
 
-    if (pthread_create(&client.readThread, &readThreadParams, clientReader, NULL)) {
+    if (pthread_create(&(client.readThread), &readThreadParams, clientReader, NULL)) {
         printf("client: %d", errno);
         exit(EXIT_FAILURE);
     }
 
+    getchar();
     do {
-
-        int flags = fcntl(fileno(stdin), F_GETFL, 0);
-        fcntl(fileno(stdin), F_SETFL, flags | O_NONBLOCK);
-
-        char userInput[2];
-        int userInputResult;
-        do {
-            userInputResult = read(fileno(stdin), &userInput, 2);
-            printf("no read");
-            sleep(1);
-        } while (userInputResult == -1 || userInput[0] != '0');
-
-        fcntl(fileno(stdin), F_SETFL, flags);
+        char message[4096] = {0};
+        int needle = -1;
 
         do {
-            char message[4096] = {0};
-            int needle = -1;
+            needle += 1;
+            message[needle] = getchar();
+        } while (message[needle] != '\n');
 
-            do {
-                needle += 1;
-                message[needle] = getchar();
-            } while (message[needle] != '\n');
+        message[needle] = 0;
 
-            pthread_mutex_lock(&consoleAwaible);
+        if (needle == 0) {
+            continue;
+        }
 
-            message[needle] = 0;
-
-            if (needle != 0) {
-                write(sock, message, needle);
-                break;
-            }
-
-            pthread_mutex_unlock(&consoleAwaible);
-        } while (1);
-    } while(1);
+        write(sock, message, needle);
+    } while (1);
 }

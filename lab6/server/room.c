@@ -69,7 +69,7 @@ void deleteRoom(struct room* someRoom) {
 
             char goodbuyString[4096] = "the room was deleted";
             char sender[255] = "system";
-            write(someRoom->clients[i]->socket, "system", 255);
+            write(someRoom->clients[i]->socket, sender, 255);
             write(someRoom->clients[i]->socket, goodbuyString, 4096);
             close(someRoom->clients[i]->socket);
 
