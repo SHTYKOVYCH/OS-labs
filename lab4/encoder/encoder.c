@@ -3,8 +3,6 @@
 #include <string.h>
 
 int main(int argc, char *argv[]) {
-    FILE* tty = fopen("/dev/tty", "w+");
-
     size_t len = 0;
     char string[4096] = {0};
     char key;
@@ -25,8 +23,6 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < len; ++i) {
         printf("%c", string[i] ^ key);
     }
-
-    fclose(tty);
 
     exit(EXIT_SUCCESS);
 }
