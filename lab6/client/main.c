@@ -8,8 +8,63 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
 
-int main() {
+struct client_s
+{
+    int socket;
+    pthread_t readThread;
+};
+
+struct client_s client;
+
+pthread_mutex_t consoleAwaible;
+
+void exitFunc(int sig) {
+    if (client.readThread < 0) {
+        pthread_cancel(client.readThread);
+    }
+    close(client.socket);
+
+    exit(EXIT_SUCCESS);
+}
+
+void *clientReader() {
+    do {
+        printf("Press 0 to start typing");
+        char sender[256] = {0};
+        char message[4096] = {0};
+
+        if (!read(client.socket, sender, 255)) {
+            perror("client: ");
+            close(client.socket);
+            exit(EXIT_SUCCESS);
+        }
+
+        if (!read(client.socket, message, 4096)) {
+            perror("client: ");
+            close(client.socket);
+            exit(EXIT_SUCCESS);
+        }
+
+        pthread_mutex_lock(&consoleAwaible);
+        printf("\r%s : %s", sender, message);
+        pthread_mutex_unlock(&consoleAwaible);
+
+    } while (1);
+}
+
+int main(int argc, char **argv) {
+    if (argc == 1 || argc == 2) {
+        printf("usage: client <adrr> <port>");
+
+        exit(EXIT_FAILURE);
+    }
+
+    client.readThread = -1;
+    pthread_mutex_init(&consoleAwaible, NULL);
+
     int sock;
 
     struct sockaddr_in socketParams;
@@ -17,25 +72,173 @@ int main() {
     sock = socket(AF_INET, SOCK_STREAM, 0);
 
     socketParams.sin_family = AF_INET;
-    socketParams.sin_addr.s_addr = inet_addr("127.0.0.1");
-    socketParams.sin_port = htons(9526);
+    socketParams.sin_addr.s_addr = inet_addr(argv[1]);
+    socketParams.sin_port = htons((short) atol(argv[2]));
 
     int length = sizeof(socketParams);
 
-    int result = connect(sock, (struct sockaddr*)&socketParams, length);
+    int result = connect(sock, (struct sockaddr *) &socketParams, length);
 
     if (result == -1) {
-        perror("client");
+        printf("client: %d", errno);
         exit(EXIT_FAILURE);
     }
 
-    char serverString[4096] = {0};
-    read(sock, serverString, 4096);
-    printf("Read from server: %s\n", serverString);
+    char buffer;
 
-    const char* greetings = "hello server";
+    if (!read(sock, &buffer, 1)) {
+        printf("client: %d", errno);
+        close(sock);
+        exit(EXIT_SUCCESS);
+    }
 
-    write(sock, greetings, strlen(greetings) + 1);
+    if (buffer != 't') {
+        close(sock);
+        printf("client: server error\n");
+        exit(EXIT_SUCCESS);
+    }
 
-    close(sock);
+    char name[255] = {0};
+    printf("Enter your name: ");
+    scanf("%s", name);
+
+    write(sock, name, strlen(name) + 1);
+
+    if (!read(sock, &buffer, 1)) {
+        printf("client: %d", errno);
+        close(sock);
+        exit(EXIT_SUCCESS);
+    }
+
+    if (buffer != 't') {
+        printf("client: %d", errno);
+        close(sock);
+        exit(EXIT_SUCCESS);
+    }
+
+
+    int numOfRooms;
+    rooms_printing:
+    if (!read(sock, &numOfRooms, 4)) {
+        printf("client: %d", errno);
+        close(sock);
+        exit(EXIT_SUCCESS);
+    }
+
+    if (numOfRooms == 0) {
+        printf("No rooms to display!\n");
+    } else {
+        printf("Rooms total %d\n", numOfRooms);
+        for (int i = 0; i < numOfRooms; ++i) {
+            int roomId;
+            char roomName[256] = {0};
+            if (!read(sock, &roomId, 4)) {
+                close(sock);
+                printf("client: server error\n");
+                exit(EXIT_SUCCESS);
+            }
+
+            if (!read(sock, roomName, 255)) {
+                close(sock);
+                printf("client: server error\n");
+                exit(EXIT_SUCCESS);
+            }
+
+            printf("Room %d - %s\n", roomId, roomName);
+        }
+    }
+
+    int userChoice;
+    printf("Commands:\n1 - Create room\n2 - Join room\n");
+    do {
+        printf(" > ");
+        scanf("%d", &userChoice);
+    } while (userChoice != 1 && userChoice != 2);
+
+    if (userChoice == 1) {
+        char roomName[256];
+        printf("Enter new room's name: ");
+        scanf("%s", roomName);
+
+        write(sock, "CR", 2);
+        write(sock, roomName, strlen(roomName) + 1);
+
+        if (!read(sock, &buffer, 1)) {
+            perror("client");
+            exit(EXIT_SUCCESS);
+        }
+
+        if (buffer != 't') {
+            close(sock);
+            printf("client: server error\n");
+            exit(EXIT_SUCCESS);
+        }
+
+        goto rooms_printing;
+    }
+
+    int roomId;
+    printf("Enter room's number: ");
+    scanf("%d", &roomId);
+
+    write(sock, &roomId, 4);
+
+    if (!read(sock, &buffer, 1)) {
+        perror("client");
+        exit(EXIT_SUCCESS);
+    }
+
+    if (buffer != 't') {
+        close(sock);
+        printf("client: server error\n");
+        exit(EXIT_SUCCESS);
+    }
+
+    client.socket = sock;
+
+    pthread_attr_t readThreadParams;
+    pthread_attr_init(&readThreadParams);
+    pthread_attr_setdetachstate(&readThreadParams, PTHREAD_CREATE_DETACHED);
+
+    if (pthread_create(&client.readThread, &readThreadParams, clientReader, NULL)) {
+        printf("client: %d", errno);
+        exit(EXIT_FAILURE);
+    }
+
+    do {
+
+        int flags = fcntl(fileno(stdin), F_GETFL, 0);
+        fcntl(fileno(stdin), F_SETFL, flags | O_NONBLOCK);
+
+        char userInput[2];
+        int userInputResult;
+        do {
+            userInputResult = read(fileno(stdin), &userInput, 2);
+            printf("no read");
+            sleep(1);
+        } while (userInputResult == -1 || userInput[0] != '0');
+
+        fcntl(fileno(stdin), F_SETFL, flags);
+
+        do {
+            char message[4096] = {0};
+            int needle = -1;
+
+            do {
+                needle += 1;
+                message[needle] = getchar();
+            } while (message[needle] != '\n');
+
+            pthread_mutex_lock(&consoleAwaible);
+
+            message[needle] = 0;
+
+            if (needle != 0) {
+                write(sock, message, needle);
+                break;
+            }
+
+            pthread_mutex_unlock(&consoleAwaible);
+        } while (1);
+    } while(1);
 }

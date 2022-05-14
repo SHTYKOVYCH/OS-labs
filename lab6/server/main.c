@@ -6,48 +6,19 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
 
-struct clientInfoStruct
-{
-    int socket;
-};
+#include "client.h"
+#include "room.h"
 
-void *clientReader(void* info) {
-    int socket = ((struct clientInfoStruct *) info)->socket;
+struct rooms_s rooms;
 
-    char str[4096] = {0};
-    while(read(socket, str, 4096)) {
-        printf("read from client: %s\n", str);
+void sigInt(int sig) {
+    for (int i = 0; i < rooms.numOfRooms; ++i) {
+        deleteRoom(rooms.rooms[i]);
     }
-    pthread_exit("");
-}
 
-void *clientWriter(void* info) {
-    int socket = ((struct clientInfoStruct *) info)->socket;
-
-    const char* greetings = "Hello, user!";
-    write(socket, greetings, strlen(greetings) + 1  );
-
-    pthread_exit("");
-}
-
-void *serveClient(void *info) {
-    int socket = ((struct clientInfoStruct *) info)->socket;
-
-    pthread_t readThread, writeThread;
-
-    pthread_attr_t readThreadParams;
-    pthread_attr_init(&readThreadParams);
-    pthread_attr_setdetachstate(&readThreadParams, PTHREAD_CREATE_DETACHED);
-
-    pthread_create(&readThread, NULL, clientReader, info);
-    pthread_create(&writeThread, &readThreadParams, clientWriter, info);
-
-    pthread_join(readThread, NULL);
-
-    close(socket);
-
-    pthread_exit("");
+    exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char **argv) {
@@ -56,6 +27,17 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
+    struct sigaction act;
+    act.sa_handler = sigInt;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
+    sigaction(SIGINT, &act, NULL);
+    sigaction(SIGTERM, &act, NULL);
+
+    pthread_mutex_init(&rooms.roomsAwaible, NULL);
+    rooms.numOfRooms = 0;
+    rooms.last_id = 0;
+
     int connectionSocket;
     struct sockaddr_in connectionSocketParams;
 
@@ -63,28 +45,23 @@ int main(int argc, char **argv) {
 
     connectionSocketParams.sin_family = AF_INET;
     connectionSocketParams.sin_addr.s_addr = htonl(INADDR_ANY);
-    connectionSocketParams.sin_port = htons((short)atol(argv[1]));
+    connectionSocketParams.sin_port = htons((short) atol(argv[1]));
+
+
 
     bind(connectionSocket, (struct sockaddr *) &connectionSocketParams, sizeof(connectionSocketParams));
     listen(connectionSocket, 4096);
 
     printf("Listening on port: %s\n", argv[1]);
     while (1) {
-
         struct sockaddr_in clientSocketParams;
 
         unsigned int clientLength = sizeof(clientSocketParams);
+
         int clientSocket = accept(connectionSocket, (struct sockaddr *) &clientSocketParams,
                                   &clientLength);
 
-        struct clientInfoStruct clientInfo;
-        clientInfo.socket = clientSocket;
-
-        pthread_t clientThreadId;
-        pthread_attr_t clientServerAttr;
-        pthread_attr_init(&clientServerAttr);
-        pthread_attr_setdetachstate(&clientServerAttr, PTHREAD_CREATE_DETACHED);
-        pthread_create(&clientThreadId, &clientServerAttr, serveClient, &clientInfo);
+        acceptClient(clientSocket);
     }
 
     close(connectionSocket);
