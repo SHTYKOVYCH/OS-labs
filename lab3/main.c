@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <termios.h>
+#include <fcntl.h>
 
 extern char **environ;
 
@@ -126,6 +127,8 @@ int parseAndExecCommand() {
             perror("term:");
             break;
         case (0): {
+            signal(SIGINT, SIG_IGN);
+
             if (execvp(parsedCommand[0], parsedCommand) == -1) {
                 perror("term");
             }
@@ -147,7 +150,6 @@ int parseAndExecCommand() {
         }
     }
 
-
     return 0;
 }
 
@@ -159,8 +161,8 @@ int main() {
     act.sa_handler = sigINT;
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
-    sigaction(SIGINT, &act, NULL);
 
+    sigaction(SIGINT, &act, NULL);
     signal(SIGCHLD, SIG_IGN);
 
     do {
