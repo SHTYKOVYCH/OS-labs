@@ -11,6 +11,7 @@
 
 struct client {
     int socket;
+    int read_socket;
     char name[255];
     struct room* room;
     pthread_t readThread;

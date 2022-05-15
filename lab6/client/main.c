@@ -14,6 +14,7 @@
 struct client_s
 {
     int socket;
+    int read_socket;
     pthread_t readThread;
 };
 
@@ -35,15 +36,17 @@ void *clientReader() {
         char sender[256] = {0};
         char message[4096] = {0};
 
-        if (!read(client.socket, sender, 255)) {
+        if (!read(client.read_socket, sender, 255)) {
             perror("client: ");
             close(client.socket);
+            close(client.read_socket);
             exit(EXIT_SUCCESS);
         }
 
-        if (!read(client.socket, message, 4096)) {
+        if (!read(client.read_socket, message, 4096)) {
             perror("client: ");
             close(client.socket);
+            close(client.read_socket);
             exit(EXIT_SUCCESS);
         }
 
@@ -196,6 +199,7 @@ int main(int argc, char **argv) {
     }
 
     client.socket = sock;
+    client.read_socket = dup(sock);
 
     pthread_attr_t readThreadParams;
     pthread_attr_init(&readThreadParams);

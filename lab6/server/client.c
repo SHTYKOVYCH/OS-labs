@@ -99,6 +99,8 @@ rooms_printing:
 
     printf("New client connected to room %d\n", roomId);
 
+    newClient->read_socket = dup(newClient->socket);
+
     pthread_attr_t readThreadParams;
     pthread_attr_init(&readThreadParams);
     pthread_attr_setdetachstate(&readThreadParams, PTHREAD_CREATE_DETACHED);
@@ -112,21 +114,22 @@ rooms_printing:
 
 void *clientReader(void* info) {
     struct client* someClient = info;
-    printf("Started listening for client %d\n", someClient->socket);
+    printf("Started listening for client %d\n", someClient->read_socket);
 
     char buffer[4056] = {0};
 
     do {
         char message[4097] = {0};
 
-        if (!read(someClient->socket, message, 4096)) {
-            printf("client %d disconected\n", someClient->socket);
+        if (!read(someClient->read_socket, message, 4096)) {
+            printf("client %d disconected\n", someClient->read_socket);
+            close(someClient->read_socket);
             close(someClient->socket);
             disconnectFromRoom(someClient->room, someClient);
             free(someClient);
             break;
         }
-        printf("Readed message from %d\n", someClient->socket);
+        printf("Readed message from %d\n", someClient->read_socket);
 
         struct message* newMessage;
         do {
@@ -136,7 +139,7 @@ void *clientReader(void* info) {
         strcpy(newMessage->message, message);
         strcpy(newMessage->senderName, someClient->name);
 
-        printf("Sending message from %d\n", someClient->socket);
+        printf("Sending message from %d\n", someClient->read_socket);
 
         sendMessage(someClient->room, newMessage);
     } while(1);
