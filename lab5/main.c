@@ -185,11 +185,26 @@ void sobel(int x, int y) {
     gray_pointers[y][x*4 + 3] = 255;
 }
 
+struct sobel_indexes {
+    int top;
+    int bottom;
+};
+
 void* sobel_row(void* row_ptr) {
     int row = *(int*)row_ptr;
 
     for (int x = 0; x < width; ++x) {
         sobel(x, row);
+    }
+}
+
+void* sobel_mult(void* str) {
+    struct sobel_indexes* index = (struct sobel_indexes*)str;
+
+    for (int y = index->top; y < index->bottom; ++y) {
+        for (int x = 0; x < width; ++x) {
+            sobel(x, y);
+        }
     }
 }
 
@@ -208,41 +223,41 @@ void process_png_file() {
         }
     }
 
-    struct timeval tv1,tv2,dtv;
-    struct timezone tz;
-
-    gettimeofday(&tv1, &tz);
-
+    time_t timer = clock();
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             sobel(x, y);
         }
     }
-    gettimeofday(&tv2, &tz);
-    dtv.tv_sec= tv2.tv_sec -tv1.tv_sec;
-    dtv.tv_usec=tv2.tv_usec-tv1.tv_usec;
-    if(dtv.tv_usec<0) { dtv.tv_sec--; dtv.tv_usec+=1000000; }
 
-    printf("time for single thread = %lu\n", dtv.tv_sec*1000+dtv.tv_usec/1000);
+    printf("time for single thread = %lu\n", clock() - timer);
 
-    int row_pointer[height];
-    pthread_t threads[height];
 
-    gettimeofday(&tv1, &tz);
-    for (int y = 0; y < height; ++y) {
-        row_pointer[y] = y;
-        pthread_create(&threads[y], NULL, sobel_row, &row_pointer[y]);
+    for (int p = 2; p < 17; ++p) {
+        struct sobel_indexes row_pointer[p];
+        pthread_t threads[p];
+
+        int step = height / p;
+        int rest = height % p;
+
+        timer = clock();
+        for (int y = 0; y < p; ++y) {
+            row_pointer[y].top = step * y;
+            row_pointer[y].bottom = step * (y + 1);
+
+            if (y == p - 1) {
+                row_pointer[y].bottom += rest;
+            }
+
+            pthread_create(&threads[y], NULL, sobel_row, &row_pointer[y]);
+        }
+
+        for (int i = 0; i < p; ++i) {
+            pthread_join(threads[i], NULL);
+        }
+
+        printf("time for multiple thread %d = %lu\n", p, clock() - timer);
     }
-
-    for (int i = 0; i < height; ++i) {
-        pthread_join(threads[i], NULL);
-    }
-    gettimeofday(&tv2, &tz);
-    dtv.tv_sec= tv2.tv_sec -tv1.tv_sec;
-    dtv.tv_usec=tv2.tv_usec-tv1.tv_usec;
-    if(dtv.tv_usec<0) { dtv.tv_sec--; dtv.tv_usec+=1000000; }
-
-    printf("time for multiple thread = %lu", dtv.tv_sec*1000+dtv.tv_usec/1000);
 
     for (int y = 0; y < height; y++) {
         free(row_pointers[y]);
