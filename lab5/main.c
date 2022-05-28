@@ -240,7 +240,6 @@ void process_png_file() {
         int step = height / p;
         int rest = height % p;
 
-        timer = clock();
         for (int y = 0; y < p; ++y) {
             row_pointer[y].top = step * y;
             row_pointer[y].bottom = step * (y + 1);
@@ -248,14 +247,15 @@ void process_png_file() {
             if (y == p - 1) {
                 row_pointer[y].bottom += rest;
             }
-
-            pthread_create(&threads[y], NULL, sobel_row, &row_pointer[y]);
         }
 
+        timer = clock();
+        for (int y = 0; y < p; ++y) {
+            pthread_create(&threads[y], NULL, sobel_mult, &row_pointer[y]);
+        }
         for (int i = 0; i < p; ++i) {
             pthread_join(threads[i], NULL);
         }
-
         printf("time for multiple thread %d = %lu\n", p, clock() - timer);
     }
 
