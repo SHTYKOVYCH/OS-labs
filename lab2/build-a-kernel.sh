@@ -22,7 +22,7 @@ if [ ! -d 'linux-5.10-103' ]; then
 
   tar -xf linux-5.10.103.tar.xz
 
-  if [ ! -d 'linux-5.10.103']; then
+  if [ ! -d 'linux-5.10.103' ]; then
     echo 'Чет произошло, чекай лог ошибок'
     exit
   fi
@@ -52,7 +52,7 @@ read num_of_kernels
 echo 'Сходи за чаем, это на долго'
 sleep 2
 
-if [ ! [make -j $num_of_kernels && make modules -j $num_of_kernels] ]; then
+if [ ! [ make -j $num_of_kernels && make modules -j $num_of_kernels] ]; then
   echo "Чет пошло не так, чекай логи"
   exit
 fi
