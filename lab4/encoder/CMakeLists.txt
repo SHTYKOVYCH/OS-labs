@@ -6,6 +6,6 @@ project(${PROJECT})
 
 set(GXX_FLAGS "-g -fsanitize=address")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GXX_FLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GXX_FLAGS}")
 
 add_executable(${PROJECT} encoder.c)
