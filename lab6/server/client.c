@@ -1,18 +1,21 @@
 #include "client.h"
 #include "room.h"
 
-struct client* acceptClient(int socket) {
-    struct client* newClient = malloc(sizeof(struct client));
+void *acceptClient(void *socket_p) {
+    int socket = *(int *) socket_p;
+    free(socket_p);
+
+    struct client *newClient = malloc(sizeof(struct client));
 
     printf("New client is connecting\n");
 
     if (!newClient) {
         write(socket, "f", 1);
-        perror("connection error");
+        printf("registration error: memory allocation\n");
         return NULL;
     }
 
-    printf("New client is created\n");
+    printf("server: new client is created\n");
 
     write(socket, "t", 1);
 
@@ -21,85 +24,88 @@ struct client* acceptClient(int socket) {
     long readed = read(socket, newClient->name, 255);
     if (readed == 0 || readed == -1) {
         write(socket, "f", 1);
-        perror("connection error");
+        close(socket);
+        printf("server error: reading from socket\n");
         free(newClient);
-        return NULL;
+        pthread_exit("");
     }
 
     write(socket, "t", 1);
+    printf("server: new client is registered\n");
 
-    printf("New client is registered\n");
-
-rooms_printing:
+    rooms_printing:
     write(socket, &rooms.numOfRooms, 4);
 
     for (int i = 0; i < rooms.numOfRooms; ++i) {
-        printf("Sended client %d - %s\n", rooms.rooms[i]->id, rooms.rooms[i]->name);
+        printf("server: sent room %d - %s\n", rooms.rooms[i]->id, rooms.rooms[i]->name);
         write(socket, &rooms.rooms[i]->id, 4);
-        write(socket, rooms.rooms[i]->name, strlen(rooms.rooms[i]->name) + 1);
+        write(socket, rooms.rooms[i]->name, 256);
     }
 
-    printf("New client received list of rooms\n");
+    printf("server: new client received list of rooms\n");
 
     char command[3] = {0};
-
-    if (read(newClient->socket, command, 2)) {
+    int result;
+    reading_command:
+    result = read(newClient->socket, command, 2);
+    if (result != -1 && result != 0) {
         if (!strcmp(command, "CR")) {
-            printf("New client sended \"Create room\" command\n");
 
-            char roomName[255];
-            if (!read(socket, roomName, 255)) {
-                perror("room creation - reading name");
+            printf("server: new client sent \"Create room\" command\n");
+
+            int result;
+
+            char roomName[256];
+            result = read(socket, roomName, 256);
+
+            if (result == -1 || result == 0) {
+                printf("server error: client disconnected");
+                close(socket);
                 free(newClient);
                 return NULL;
             }
 
             if (!createRoom(roomName)) {
                 write(socket, "f", 1);
-                perror("room creation - creating room");
-                close(socket);
-                return NULL;
+                printf("server error: creating room");
+                goto reading_command;
             }
 
             write(socket, "t", 1);
             goto rooms_printing;
         }
     } else {
-        perror("Reading from client error");
+        printf("server error: client disconnected");
         close(socket);
+        free(newClient);
         return NULL;
     }
 
-    printf("New client sended \"Connect to room\" command\n");
+    printf("server: new client sent \"Connect to room\" command\n");
 
     int roomId;
     readed = read(socket, &roomId, 4);
-    if (readed == 0 || readed == -1) {
-        write(socket, "f", 1);
-        perror("Reading from client");
+    if (readed == -1 || readed == 0) {
+        printf("server error: client disconnected");
         close(newClient->socket);
         free(newClient);
         return NULL;
     }
 
     write(socket, "t", 1);
-
-    printf("New client sended id of a room\n");
+    printf("server: new client sent id of a room - %c\n", roomId);
 
     for (int i = 0; i < rooms.numOfRooms; ++i) {
         if (rooms.rooms[i]->id == roomId) {
             if (!connectToRoom(rooms.rooms[i], newClient)) {
                 write(newClient->socket, "f", 1);
-                close(newClient->socket);
-                free(newClient);
-                return NULL;
+                goto reading_command;
             }
+            break;
         }
     }
 
-    printf("New client connected to room %d\n", roomId);
-
-    newClient->read_socket = dup(newClient->socket);
+    printf("server: new client connected to room %d\n", roomId);
 
     pthread_attr_t readThreadParams;
     pthread_attr_init(&readThreadParams);
@@ -107,31 +113,43 @@ rooms_printing:
 
     pthread_create(&newClient->readThread, &readThreadParams, clientReader, newClient);
 
-    printf("New client is operational\n");
-
-    return newClient;
+    printf("server: new client is operational\n");
 }
 
-void *clientReader(void* info) {
-    struct client* someClient = info;
-    printf("Started listening for client %d\n", someClient->read_socket);
+void *clientReader(void *info) {
+    struct client *someClient = info;
+    printf("server: started listening for client %d\n", someClient->socket);
 
-    char buffer[4056] = {0};
+    fd_set socket;
+
+    FD_ZERO(&socket);
+    FD_SET((someClient->socket), &socket);
+
+    int result;
 
     do {
         char message[4097] = {0};
 
-        if (!read(someClient->read_socket, message, 4096)) {
-            printf("client %d disconected\n", someClient->read_socket);
-            close(someClient->read_socket);
+        result = select(FD_SETSIZE, &socket, NULL, NULL, NULL);
+
+        if (result == -1) {
+            printf("server error: client %d disconected\n", someClient->socket);
             close(someClient->socket);
             disconnectFromRoom(someClient->room, someClient);
             free(someClient);
             break;
         }
-        printf("Readed message from %d\n", someClient->read_socket);
 
-        struct message* newMessage;
+        if (read(someClient->socket, message, 4097) == 0) {
+            printf("server error: client %d disconected\n", someClient->socket);
+            close(someClient->socket);
+            disconnectFromRoom(someClient->room, someClient);
+            free(someClient);
+            break;
+        }
+        printf("server: read message from %d\n", someClient->socket);
+
+        struct message *newMessage;
         do {
             newMessage = malloc(sizeof(struct message));
         } while (!newMessage);
@@ -139,10 +157,10 @@ void *clientReader(void* info) {
         strcpy(newMessage->message, message);
         strcpy(newMessage->senderName, someClient->name);
 
-        printf("Sending message from %d\n", someClient->read_socket);
+        printf("server: sending message from %d\n", someClient->socket);
 
         sendMessage(someClient->room, newMessage);
-    } while(1);
+    } while (1);
 
     pthread_exit("");
 }

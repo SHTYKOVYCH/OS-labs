@@ -11,13 +11,12 @@
 
 struct client {
     int socket;
-    int read_socket;
     char name[255];
     struct room* room;
     pthread_t readThread;
 };
 
-struct client* acceptClient(int);
+void* acceptClient(void*);
 void *clientReader(void*);
 
 #endif //MESSENGER_CLIENT_H

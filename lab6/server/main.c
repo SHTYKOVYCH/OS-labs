@@ -12,11 +12,15 @@
 #include "room.h"
 
 struct rooms_s rooms;
+int connectionSocket;
 
 void sigInt(int sig) {
     for (int i = 0; i < rooms.numOfRooms; ++i) {
         deleteRoom(rooms.rooms[i]);
     }
+
+    close(connectionSocket);
+
 
     exit(EXIT_SUCCESS);
 }
@@ -38,7 +42,7 @@ int main(int argc, char **argv) {
     rooms.numOfRooms = 0;
     rooms.last_id = 0;
 
-    int connectionSocket;
+
     struct sockaddr_in connectionSocketParams;
 
     connectionSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -47,9 +51,11 @@ int main(int argc, char **argv) {
     connectionSocketParams.sin_addr.s_addr = htonl(INADDR_ANY);
     connectionSocketParams.sin_port = htons((short) atol(argv[1]));
 
+    if (bind(connectionSocket, (struct sockaddr *) &connectionSocketParams, sizeof(connectionSocketParams)) == -1) {
+        perror("server error");
+        exit(EXIT_FAILURE);
+    }
 
-
-    bind(connectionSocket, (struct sockaddr *) &connectionSocketParams, sizeof(connectionSocketParams));
     listen(connectionSocket, 4096);
 
     printf("Listening on port: %s\n", argv[1]);
@@ -58,11 +64,16 @@ int main(int argc, char **argv) {
 
         unsigned int clientLength = sizeof(clientSocketParams);
 
-        int clientSocket = accept(connectionSocket, (struct sockaddr *) &clientSocketParams,
-                                  &clientLength);
 
-        acceptClient(clientSocket);
+        int *clientSocket;
+        do {
+            clientSocket = malloc(sizeof(int));
+        } while (!clientSocket);
+
+        *clientSocket = accept(connectionSocket, (struct sockaddr *) &clientSocketParams,
+                               &clientLength);
+
+        pthread_t thread;
+        pthread_create(&thread, NULL, acceptClient, clientSocket);
     }
-
-    close(connectionSocket);
 }

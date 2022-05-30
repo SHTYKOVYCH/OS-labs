@@ -6,13 +6,13 @@
 #include "client.h"
 
 struct message {
-    char message[4096];
+    char message[4097];
     char senderName[256];
 };
 
 struct room {
     int id;
-    char name[255];
+    char name[256];
 
     pthread_mutex_t roomAwaible;
 

@@ -6,22 +6,18 @@ struct room* createRoom(char* name) {
     pthread_mutex_lock(&rooms.roomsAwaible);
 
     if (!rooms.rooms) {
-        rooms.rooms = malloc(sizeof(struct room*));
-
-        if (!rooms.rooms) {
-            perror("Error on creating room");
-            return NULL;
-        }
+        do {
+            rooms.rooms = malloc(sizeof(struct room*));
+        } while (!rooms.rooms);
     }
 
-    struct room* newRoom = malloc(sizeof(struct room));
+    struct room* newRoom;
 
-    if (!newRoom) {
-        perror("room creation fail");
-        return NULL;
-    }
+    do {
+        newRoom = malloc(sizeof(struct room));
+    } while (!newRoom);
 
-    for (int i = 0; i < 255; ++i) {
+    for (int i = 0; i < 256; ++i) {
         newRoom->name[i] = 0;
     }
 
@@ -34,13 +30,11 @@ struct room* createRoom(char* name) {
 
     pthread_mutex_init(&(newRoom->roomAwaible), NULL);
 
-    struct room** tmp_rooms = malloc(sizeof(rooms)*rooms.numOfRooms + 1);
+    struct room** tmp_rooms;
 
-    if (!tmp_rooms) {
-        perror("Error on creating room");
-        free(newRoom);
-        return NULL;
-    }
+    do {
+        tmp_rooms = malloc(sizeof(struct room*)*(rooms.numOfRooms + 1));
+    } while (!tmp_rooms);
 
     for (int i = 0; i < rooms.numOfRooms; ++i) {
         tmp_rooms[i] = rooms.rooms[i];
@@ -51,8 +45,7 @@ struct room* createRoom(char* name) {
 
     rooms.rooms[rooms.numOfRooms] = newRoom;
     rooms.numOfRooms += 1;
-    newRoom->id = rooms.last_id;
-    rooms.last_id += 1;
+    newRoom->id = rooms.last_id++;
 
     pthread_mutex_unlock(&rooms.roomsAwaible);
 
@@ -112,19 +105,17 @@ void deleteRoom(struct room* someRoom) {
 struct room* connectToRoom(struct room* someRoom, struct client* client) {
     pthread_mutex_lock(&someRoom->roomAwaible);
 
-    struct client** tmp_arr = malloc(sizeof(struct client*)*someRoom->numOfClients + 1);
+    struct client** tmp_arr;
 
-    if (!tmp_arr) {
-        perror("Error on subscribing");
-        return NULL;
-    }
+    do {
+        tmp_arr = malloc(sizeof(struct client*)*(someRoom->numOfClients + 1));
+    } while (!tmp_arr);
 
     for (int i = 0; i < someRoom->numOfClients; ++i) {
         tmp_arr[i] = someRoom->clients[i];
     }
 
     free(someRoom->clients);
-
     someRoom->clients = tmp_arr;
     someRoom->clients[someRoom->numOfClients] = client;
     someRoom->numOfClients += 1;
@@ -132,10 +123,9 @@ struct room* connectToRoom(struct room* someRoom, struct client* client) {
     client->room = someRoom;
 
     for (int i = 0; i < someRoom->numOfMessages; ++i) {
-        write(client->socket, someRoom->messages[i]->senderName, 255);
-        write(client->socket, someRoom->messages[i]->message, 4096);
+        write(client->socket, someRoom->messages[i]->senderName, 256);
+        write(client->socket, someRoom->messages[i]->message, 4097);
     }
-
 
     pthread_mutex_unlock(&someRoom->roomAwaible);
 
@@ -166,31 +156,27 @@ struct room* disconnectFromRoom(struct room* someRoom, struct client* client) {
 struct room* sendMessage(struct room* someRoom, struct message* someMessage) {
     pthread_mutex_lock(&someRoom->roomAwaible);
 
-    struct message** messages = malloc(sizeof(struct message*)*(someRoom->numOfMessages + 1));
+    struct message** messages;
 
-    if (!messages) {
-        perror("sending message error");
-        return NULL;
-    }
+    do {
+        messages = malloc(sizeof(struct message*)*(someRoom->numOfMessages + 1));
+    } while (!messages);
 
     for (int i = 0; i < someRoom->numOfMessages; ++i) {
         messages[i] = someRoom->messages[i];
     }
 
     free(someRoom->messages);
-
     someRoom->messages = messages;
-
     someRoom->messages[someRoom->numOfMessages] = someMessage;
     someRoom->numOfMessages += 1;
 
     for (int i = 0; i < someRoom->numOfClients; ++i) {
-        printf("sending message to %d\n", someRoom->clients[i]->socket);
-        write(someRoom->clients[i]->socket, someMessage->senderName, 255);
-        write(someRoom->clients[i]->socket, someMessage->message, 4096);
+        printf("server: sending message { room: %d; sender: %s; message: %s;}\n", someRoom->id, someMessage->senderName, someMessage->message);
+        write(someRoom->clients[i]->socket, someMessage->senderName, 256);
+        write(someRoom->clients[i]->socket, someMessage->message, 4097);
     }
 
     pthread_mutex_unlock(&someRoom->roomAwaible);
-
     return someRoom;
 }
